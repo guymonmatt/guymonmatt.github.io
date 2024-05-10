@@ -129,9 +129,9 @@ The table below displays both balanced and unbalanced recall scores and the perc
 
 | Pop Class | Unbalanced Test Recall | Balanced Test Recall     |     % Change     |
 |---|------------------|----------------|---------|
-|Low Pop| 70.24%          | 73.22%           |  + 4%  |
-|Med Pop| 85.81%          | 76.37%          |  - 11%  |
-|High Pop| 24.55%         | 33.91%         |    + 38%  |
+|Low Pop| 70.24%          | 73.22%           |  + 2.98%  |
+|Med Pop| 85.81%          | 76.37%          |  - 9.44%  |
+|High Pop| 24.55%         | 33.91%         |    + 9.36%  |
 
 
 
