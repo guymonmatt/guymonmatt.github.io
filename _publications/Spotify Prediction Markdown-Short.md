@@ -32,7 +32,7 @@ This graph displays the change in the yearly average of characteristics for all 
 
 This graph illustrates changes in characteristics across songs cataloged in Spotify's database over time.
 
-![ ](images/feature_line_chart.png)
+![ ](/images/feature_line_chart.png)
 
 
 
