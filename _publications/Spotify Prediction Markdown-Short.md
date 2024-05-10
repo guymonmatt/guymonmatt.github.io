@@ -105,6 +105,8 @@ The dataset used for building this model has the following counts for each Popul
 | Med Pop          | 15362          |
 | High Pop         | 8608         |
 
+![ ](/images/pop_value_counts.png)
+
 The disproportionate volume across each class could potentially lead to bias in the model. Therefore, addressing class imbalance is essential to ensure the model's performance across all classes.
 
 I'll use a technique called recall score that measure the models accuarcy for predicting each individual class, rather than on calcuating the total accuracy. This following is the output of running this validation process: 
