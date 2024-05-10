@@ -105,7 +105,7 @@ The dataset used for building this model has the following counts for each Popul
 | Med Pop          | 15362          |
 | High Pop         | 8608         |
 
-![ ](/images/pop_value_counts.png)
+![ ](/images/pop_valuecounts.png)
 
 The disproportionate volume across each class could potentially lead to bias in the model. Therefore, addressing class imbalance is essential to ensure the model's performance across all classes.
 
