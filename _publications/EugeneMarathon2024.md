@@ -42,7 +42,7 @@ These are graphs from early data exploration. Similar questions are more pursued
 
 # Performance Analysis:
 
--- Are there any correlations between age and finishing time?
+- Are there any correlations between age and finishing time?
 
 ![ ](/files/agebox.png)
 
