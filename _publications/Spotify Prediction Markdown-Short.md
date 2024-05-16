@@ -25,6 +25,10 @@ I added an additional column that categorizes a song's popularity score into one
 | Med Pop  | 30-59            |
 | High Pop | 60-100           |
 
+## Key Buisness Problem
+
+With thousands of songs stored in the track database, a recommendation model needs to understand the characteristics of a popular song. It will then be able to accurately predict if a new song will be popular amoung users so it can recommend tracks users are likely to enjoy.
+
 
 ## Change in Average Song Features Over Time
 
