@@ -7,24 +7,49 @@ author_profile: true
 
 ---
 
-After completing the Eugene Marathon in April 2024, I scraped the race data from the results page to further explore the data. The Eugene Marathon has a repuation for attracting elite competitors from beyond just the Pacific Northwest so I went about exploring the scraped dataset with this international interest in mind.
+After completing the Eugene Marathon in April 2024, I scraped the race data from the results page to further explore the data. The Eugene Marathon has a repuation for attracting elite competitors from beyond just the Pacific Northwest so I went about exploring the scraped dataset with this international interest in mind. I created visualizations using Tableu and provided insights I discovered while working with the result data.
+
+## [Click this Link to Access Tableu Dashboard for this Analysis]([https://www.theguardian.com/music/2018/oct/05/10-years-of-spotify-should-we-celebrate-or-despair](https://public.tableau.com/views/MarathonDashboard_17158347674300/Dashboard1?:language=en-US&:sid=&:display_count=n&:origin=viz_share_link)) 
 
 
 
 
+## Methodology
+
+Using python, I initally scraped that data with a tool called selenium. After correcting column names, I went about cleaning the dataset and fixing/removing null values in the Chip Time column that would have created difficulties for later computations with this column. 
+
+I converted the time based columns such as Pace and Chip Time to a TimeDelta data type. This is because Python doesn't interact well with number that are formatted like 33:27:20. This same value when converted to TimeDelta looks like 0 days 33:27:20. 
+
+I also created a float column called hours that converted finish times into hours with a decimal. This simplified the proccess of later calcualtions and charts.
+
+## Initial Analysis Conducted In Jupiter Notebook
+
+These are graphs from early data exploration. Similar questions are more pursued in greater detail in the Tableu Dashboard.
+
+# Demographic Analysis:
+
+  
+- What are the age demographics of participants, does it vary by gender?
+
+![ ](/files/gender_area.png)
 
 
-<div class='tableauPlaceholder' id='viz1715835924794' style='position: relative'><noscript><a href='#'><img alt='Dashboard 1 ' src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;Ma&#47;MarathonDashboard_17158347674300&#47;Dashboard1&#47;1_rss.png' style='border: none' /></a></noscript><object class='tableauViz'  style='display:none;'><param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' /> <param name='embed_code_version' value='3' /> <param name='site_root' value='' /><param name='name' value='MarathonDashboard_17158347674300&#47;Dashboard1' /><param name='tabs' value='no' /><param name='toolbar' value='yes' /><param name='static_image' value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;Ma&#47;MarathonDashboard_17158347674300&#47;Dashboard1&#47;1.png' /> <param name='animate_transition' value='yes' /><param name='display_static_image' value='yes' /><param name='display_spinner' value='yes' /><param name='display_overlay' value='yes' /><param name='display_count' value='yes' /><param name='language' value='en-US' /></object></div>      
-<script type='text/javascript'>               
+- Which countries are most represented in the race?
+
+![ ](/files/country_pie.png)
 
 
 
-var divElement = document.getElementById('viz1715835924794');                  
-var vizElement = divElement.getElementsByTagName('object')[0];                    if ( divElement.offsetWidth > 800 ) { vizElement.style.minWidth='420px';vizElement.style.maxWidth='850px';vizElement.style.width='100%';vizElement.style.minHeight='1127px';vizElement.style.maxHeight='1187px';vizElement.style.height=(divElement.offsetWidth*0.75)+'px';} else if ( divElement.offsetWidth > 500 ) { vizElement.style.minWidth='420px';vizElement.style.maxWidth='850px';vizElement.style.width='100%';vizElement.style.minHeight='1127px';vizElement.style.maxHeight='1187px';vizElement.style.height=(divElement.offsetWidth*0.75)+'px';} else { vizElement.style.width='100%';vizElement.style.height='2077px';}                     var scriptElement = document.createElement('script');                    scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';                    vizElement.parentNode.insertBefore(scriptElement, vizElement);                </script>
+# Performance Analysis:
+
+-- Are there any correlations between age and finishing time?
+
+![ ](/files/agebox.png)
+
 
 
 
 ---
 
 
-For those interested in recreating or extending this analysis, you can access the code in a Jupyter Notebook [here](https://github.com/guymonmatt/guymonmatt.github.io/blob/3f49b67657d952475f619bb179f2262adfb5eb84/notebooks/Spotify%20Prediction%20Markdown-Short.ipynb).
+Access the full Jupter Notebook for this analysis [here](https://github.com/guymonmatt/guymonmatt.github.io/blob/master/notebooks/Eugene_Marathon_2024_results.ipynb).
