@@ -24,7 +24,7 @@ I also created a float column called hours that converted finish times into hour
 
 ## Initial Analysis Conducted In Jupiter Notebook
 
-These are graphs from early data exploration. Similar questions are more pursued in greater detail in the Tableu Dashboard.
+These are graphs from early data exploration. Similar questions are pursued in greater detail in the Tableu Dashboard.
 
 # Demographic Analysis:
 
