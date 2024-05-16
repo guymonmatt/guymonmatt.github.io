@@ -10,7 +10,9 @@ redirect_from:
 ## Click on the tab above to view the full details for the project ## 
 
 
-The current project in this showcase is related to my interest in the use of machine-learning models in entertainment data. Future projects will be associated with social issues that I've worked to solve in my internship experience. Below is a brief description of the currently showcased project.
+<!--The current project in this showcase is related to my interest in the use of machine-learning models in entertainment data. Future projects will be associated with social issues that I've worked to solve in my internship experience. Below is a brief description of the currently showcased project. -->
+
+
 
 
 
