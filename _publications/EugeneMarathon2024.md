@@ -18,11 +18,11 @@ After completing the Eugene Marathon in April 2024, I scraped the race data from
 <script type='text/javascript'>               
 
 
-``` {js, embedcode, echo=FALSE}
+
 var divElement = document.getElementById('viz1715835924794');                  
 var vizElement = divElement.getElementsByTagName('object')[0];                    if ( divElement.offsetWidth > 800 ) { vizElement.style.minWidth='420px';vizElement.style.maxWidth='850px';vizElement.style.width='100%';vizElement.style.minHeight='1127px';vizElement.style.maxHeight='1187px';vizElement.style.height=(divElement.offsetWidth*0.75)+'px';} else if ( divElement.offsetWidth > 500 ) { vizElement.style.minWidth='420px';vizElement.style.maxWidth='850px';vizElement.style.width='100%';vizElement.style.minHeight='1127px';vizElement.style.maxHeight='1187px';vizElement.style.height=(divElement.offsetWidth*0.75)+'px';} else { vizElement.style.width='100%';vizElement.style.height='2077px';}                     var scriptElement = document.createElement('script');                    scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';                    vizElement.parentNode.insertBefore(scriptElement, vizElement);                </script>
 
-```
+
 
 ---
 
