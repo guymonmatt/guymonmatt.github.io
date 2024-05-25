@@ -8,18 +8,18 @@ redirect_from:
   - /about.html
 header:
   overlay_color: "#5e616c"
-  overlay_image: /assets/images/treebanner.jpg
+  overlay_image: /images/treebanner.jpg
 excerpt: >
   Welcome To My Portfolio Of Data Analysis Projects.
 feature_row:
-  - image_path: /assets/images/spotifylogo.png
+  - image_path: /images/spotifylogo.png
     alt: "spotify"
     title: "Spotify Prediction Model"
     excerpt: "Using a massive dataset of 500,000+ songs from Spotify, I built a model that can predict the popularity level of a track based on sonic characteristics."
     url: "/Spotify"
     btn_class: "btn--primary"
     btn_label: "Learn more"
-  - image_path: /assets/images/marathonlogo.png
+  - image_path: /images/marathonlogo.png
     alt: "Marathon"
     title: "Eugene Marathon Results Analysis"
     excerpt: "Analyis of Eugen Marathon data scraped from results page. Includes Tableau dashboard."
