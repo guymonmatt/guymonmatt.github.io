@@ -9,7 +9,7 @@ author_profile: true
 
 After completing the Eugene Marathon in April 2024, I scraped the race data from the results page to further explore the data. The Eugene Marathon has a repuation for attracting elite competitors from beyond just the Pacific Northwest so I went about exploring the scraped dataset with this international interest in mind. I created visualizations using Tableau and provided insights I discovered while working with the result data.
 
-# [Click this Link to access the Tableu Dashboard for this Analysis](https://public.tableau.com/views/MarathonDashboard_17158347674300/Dashboard1?:language=en-US&:sid=&:display_count=n&:origin=viz_share_link) 
+# [Click this Link to access the Tableau Dashboard for this Analysis](https://public.tableau.com/views/MarathonDashboard_17158347674300/Dashboard1?:language=en-US&:sid=&:display_count=n&:origin=viz_share_link) 
 
 
 
