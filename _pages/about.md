@@ -8,7 +8,7 @@ redirect_from:
   - /about.html
 header:
   overlay_color: "#5e616c"
-  overlay_image: ./images/treebanner.jpg
+  overlay_image: "./images/forest_banner.jpg"
 excerpt: >
   Welcome To My Portfolio Of Data Analysis Projects.
 feature_row:
@@ -19,14 +19,13 @@ feature_row:
     url: "/Spotify"
     btn_class: "btn--primary"
     btn_label: "Learn more"
-  - image_path: ./images/marathonlogo.png
+  - image_path: ./images/eugenelogo.png
     alt: "Marathon"
     title: "Eugene Marathon Results Analysis"
-    excerpt: "Analyis of Eugen Marathon data scraped from results page. Includes Tableau dashboard."
+    excerpt: "Analysis of Eugene Marathon data scraped from the results page. Includes Tableau dashboard."
     url: "/Marathon/"
     btn_class: "btn--primary"
     btn_label: "Learn more"
-  
 ---
 
 {% include feature_row %}
