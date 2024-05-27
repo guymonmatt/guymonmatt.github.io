@@ -7,7 +7,7 @@ redirect_from:
   - /about.html
 header:
   overlay_color: "#5e616c"
-  overlay_image: "/images/forest_banner.jpg"  # Correct path to the header image
+  overlay_image: ../images//forest_banner.jpg  # Correct path to the header image
 excerpt: >
   Welcome To My Portfolio Of Data Analysis Projects.
 ---
