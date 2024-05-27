@@ -1,5 +1,4 @@
 ---
-layout: splash
 permalink: /
 hidden: true
 author_profile: true
