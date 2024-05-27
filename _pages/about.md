@@ -1,10 +1,15 @@
 ---
 permalink: /
 hidden: true
-author_profile: true
+author_profile: false
 redirect_from: 
   - /about/
   - /about.html
+header:
+  overlay_color: "#5e616c"
+  overlay_image: "../images/forest_banner.jpg"  # Correct path to the header image
+excerpt: >
+  Welcome To My Portfolio Of Data Analysis Projects.
 ---
 
 ![Spotify](../images/spotifylogo.png)
