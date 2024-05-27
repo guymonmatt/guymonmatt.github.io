@@ -8,24 +8,19 @@ redirect_from:
   - /about.html
 header:
   overlay_color: "#5e616c"
-  overlay_image: /files/forest_banner.jpg"
+  overlay_image: "/images/forest_banner.jpg"
 excerpt: >
   Welcome To My Portfolio Of Data Analysis Projects.
-feature_row:
-  - image_path: /files/spotifylogo.png
-    alt: "spotify"
-    title: "Spotify Prediction Model"
-    excerpt: "Using a massive dataset of 500,000+ songs from Spotify, I built a model that can predict the popularity level of a track based on sonic characteristics."
-    url: "/Spotify"
-    btn_class: "btn--primary"
-    btn_label: "Learn more"
-  - image_path: /files/eugenelogo.png
-    alt: "Marathon"
-    title: "Eugene Marathon Results Analysis"
-    excerpt: "Analysis of Eugene Marathon data scraped from the results page. Includes Tableau dashboard."
-    url: "/Marathon/"
-    btn_class: "btn--primary"
-    btn_label: "Learn more"
 ---
 
-{% include feature_row %}
+![Spotify](./images/spotifylogo.png)
+
+### Spotify Prediction Model
+Using a massive dataset of 500,000+ songs from Spotify, I built a model that can predict the popularity level of a track based on sonic characteristics.  
+[Learn more](/Spotify){: .btn .btn--primary}
+
+![Marathon](./images/eugenelogo.png)
+
+### Eugene Marathon Results Analysis
+Analysis of Eugene Marathon data scraped from the results page. Includes Tableau dashboard.  
+[Learn more](/Marathon/){: .btn .btn--primary}
