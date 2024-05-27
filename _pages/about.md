@@ -8,7 +8,7 @@ redirect_from:
   - /about.html
 header:
   overlay_color: "#5e616c"
-  overlay_image: "/images/forest_banner.jpg"
+  overlay_image: "/images/forest_banner.jpg"  # Ensure this image is in the 'images' folder at the root
 excerpt: >
   Welcome To My Portfolio Of Data Analysis Projects.
 ---
