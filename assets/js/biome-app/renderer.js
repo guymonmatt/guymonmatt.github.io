@@ -140,8 +140,7 @@ export class Renderer {
     }
     const imgData = this.maskCtx.createImageData(mask.width, mask.height);
     for (let i = 0; i < mask.data.length; i++) {
-      const a = Math.max(0, Math.min(1, mask.data[i])) * 255;
-      imgData.data[i * 4 + 3] = a;
+      imgData.data[i * 4 + 3] = maskAlphaCurve(mask.data[i]) * 255;
     }
     this.maskCtx.putImageData(imgData, 0, 0);
 
@@ -256,6 +255,18 @@ function updateParticle(p, dt, time, w, h, windX) {
   }
   if (p.x > w + 10) p.x = -10;
   if (p.x < -10) p.x = w + 10;
+}
+
+// Segmentation confidence is noisy at shadows, hairlines, and collar edges.
+// Mapping it to alpha 1:1 lets those soft spots fade toward background —
+// this pushes mid-confidence pixels solidly toward "person" instead, so a
+// shadowed neck doesn't turn into a see-through hole.
+const MASK_LO = 0.25;
+const MASK_HI = 0.6;
+
+function maskAlphaCurve(v) {
+  const t = Math.max(0, Math.min(1, (v - MASK_LO) / (MASK_HI - MASK_LO)));
+  return t * t * (3 - 2 * t); // smoothstep
 }
 
 function mulberry32(seed) {
