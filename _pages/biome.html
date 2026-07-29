@@ -1,0 +1,50 @@
+---
+layout: biome
+title: "Biome Mirror"
+permalink: /biome/
+excerpt: "Point your camera at yourself and step into a living, shifting biome."
+sitemap: true
+---
+
+<div id="biome-app" class="biome-app">
+
+  <video id="biome-video" class="biome-video" playsinline muted autoplay></video>
+  <canvas id="biome-canvas" class="biome-canvas"></canvas>
+
+  <div id="biome-hud" class="biome-hud">
+    <a href="{{ site.baseurl }}/" class="biome-back" aria-label="Back to site">&larr;</a>
+    <div class="biome-label" id="biome-label">&nbsp;</div>
+    <button id="biome-flip" class="biome-flip" aria-label="Switch camera" hidden>&#8635;</button>
+  </div>
+
+  <div id="biome-intro" class="biome-overlay">
+    <div class="biome-card">
+      <h1>Biome Mirror</h1>
+      <p>
+        This page reads your camera feed on your device &mdash; nothing is
+        ever uploaded or stored &mdash; and grows a different forest or
+        biome around you based on things like how close you are, how you're
+        moving, and the light in the room.
+      </p>
+      <button id="biome-start" class="biome-button">Enter the biome</button>
+      <p class="biome-fineprint">Requires camera access. Works best in Chrome or Safari on a phone.</p>
+    </div>
+  </div>
+
+  <div id="biome-error" class="biome-overlay" hidden>
+    <div class="biome-card">
+      <h1>Can't reach the camera</h1>
+      <p id="biome-error-message">Camera access was denied or isn't available on this device.</p>
+      <button id="biome-retry" class="biome-button">Try again</button>
+    </div>
+  </div>
+
+  <div id="biome-loading" class="biome-overlay" hidden>
+    <div class="biome-card">
+      <p>Growing the forest&hellip;</p>
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="{{ site.baseurl }}/assets/js/biome-app/main.js"></script>

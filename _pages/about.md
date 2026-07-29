@@ -21,3 +21,8 @@ Using a massive dataset of 500,000+ songs from Spotify, I built a model that can
 [Learn more](/Spotify){: .btn .btn--primary}
 
 
+### Biome Mirror
+A mobile web app that opens your camera and grows a different color forest or biome around you in real time, based on on-device face tracking. Nothing ever leaves your device.  
+[Enter the biome](/biome/){: .btn .btn--primary}
+
+
