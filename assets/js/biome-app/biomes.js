@@ -99,9 +99,32 @@ export function computeBiomeBlend(dataPoints, ambient) {
   const browRaise = dataPoints?.browRaise ?? 0.2;
   const dayWarmth = ambient?.dayWarmth ?? 0.5;
 
-  const warmth = clamp01(0.6 * smile + 0.4 * dayWarmth);
-  const density = clamp01(size);
+  // Faceprint: stable per-person geometry ratios (defaults land at the
+  // midpoint, i.e. contribute no bias, when nobody's in frame yet).
+  const eyeSpacing = dataPoints?.eyeSpacing ?? 0.5;
+  const faceAspect = dataPoints?.faceAspect ?? 0.5;
+  const noseWidth = dataPoints?.noseWidth ?? 0.5;
+  const jawWidth = dataPoints?.jawWidth ?? 0.5;
+  const faceWarmthBias = clamp01(0.5 * eyeSpacing + 0.5 * noseWidth);
+  const faceDensityBias = clamp01(0.5 * faceAspect + 0.5 * jawWidth);
+
+  // Live expression carries the most weight so the scene still visibly
+  // reacts to you; the faceprint bias shifts where that reaction centers,
+  // so two people with the same expression land in different places.
+  const warmth = clamp01(0.45 * smile + 0.3 * dayWarmth + 0.25 * faceWarmthBias);
+  const density = clamp01(0.6 * size + 0.4 * faceDensityBias);
   const energy = clamp01(0.5 + 0.5 * browRaise);
+
+  const skin = {
+    r: dataPoints?.skinR ?? 200,
+    g: dataPoints?.skinG ?? 190,
+    b: dataPoints?.skinB ?? 170,
+  };
+  const hair = {
+    r: dataPoints?.hairR ?? 90,
+    g: dataPoints?.hairG ?? 70,
+    b: dataPoints?.hairB ?? 60,
+  };
 
   const weighted = BIOMES.map((biome) => {
     const dw = biome.warmth - warmth;
@@ -126,6 +149,7 @@ export function computeBiomeBlend(dataPoints, ambient) {
     panX: dataPoints?.x ?? 0.5,
     panY: dataPoints?.y ?? 0.5,
     hasFace: !!dataPoints,
+    personal: { skin, hair },
   };
 }
 

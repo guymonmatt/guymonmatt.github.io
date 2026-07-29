@@ -23,7 +23,21 @@ const els = {
 const camera = new Camera(els.video);
 const faceTracker = new FaceTracker();
 const segmenter = new Segmenter();
-const smoother = new Smoother(0.12);
+// Expression signals (smile, distance, tilt...) track quickly; per-person
+// geometry/color signals are smoothed slowly so they settle into a stable
+// "signature" instead of jittering with pose or lighting noise.
+const smoother = new Smoother(0.12, {
+  eyeSpacing: 0.04,
+  faceAspect: 0.04,
+  noseWidth: 0.04,
+  jawWidth: 0.04,
+  skinR: 0.05,
+  skinG: 0.05,
+  skinB: 0.05,
+  hairR: 0.05,
+  hairG: 0.05,
+  hairB: 0.05,
+});
 
 let renderer = null;
 let running = false;

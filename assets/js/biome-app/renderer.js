@@ -1,4 +1,4 @@
-import { blendPalette, blendColor, rgbToCss } from "./color.js";
+import { blendPalette, blendColor, lerpRgb, rgbToCss } from "./color.js";
 
 const TREE_LAYERS = [
   { count: 9, minY: 0.62, maxY: 0.7, minScale: 0.35, maxScale: 0.55, opacity: 0.55, parallax: 0.01 },
@@ -59,9 +59,18 @@ export class Renderer {
 
     const sky = blendPalette(blend, "sky");
     const ground = blendPalette(blend, "ground");
-    const foliage = blendPalette(blend, "foliage");
-    const particleColor = blendColor(blend, (b) => b.particle.color);
+    let foliage = blendPalette(blend, "foliage");
+    let particleColor = blendColor(blend, (b) => b.particle.color);
     const particleDensity = blend.reduce((s, w) => s + w.biome.particle.baseDensity * w.weight, 0);
+
+    // Personal tint: the actual sampled hair/skin color of whoever is in
+    // frame nudges the particle and canopy color, so the same biome still
+    // looks a little different depending on who's looking at it.
+    if (state.personal) {
+      const { skin, hair } = state.personal;
+      particleColor = lerpRgb(particleColor, hair, 0.3);
+      foliage = foliage.map((c) => lerpRgb(c, skin, 0.15));
+    }
 
     const ctx = this.ctx;
     const w = this.width;

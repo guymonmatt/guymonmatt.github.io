@@ -2,8 +2,14 @@
 // biome jumps, plus small ambient signals that aren't tied to the face.
 
 export class Smoother {
-  constructor(alpha = 0.12) {
-    this.alpha = alpha;
+  /**
+   * @param {number} defaultAlpha - EMA rate for keys not listed in `alphaByKey`.
+   * @param {Record<string, number>} alphaByKey - per-key overrides, e.g. slow
+   *   for stable "who is this" signals, faster for live expression signals.
+   */
+  constructor(defaultAlpha = 0.12, alphaByKey = {}) {
+    this.defaultAlpha = defaultAlpha;
+    this.alphaByKey = alphaByKey;
     this.values = null;
   }
 
@@ -18,7 +24,8 @@ export class Smoother {
     }
     for (const key of Object.keys(sample)) {
       if (typeof sample[key] !== "number") continue;
-      this.values[key] = lerp(this.values[key] ?? sample[key], sample[key], this.alpha);
+      const alpha = this.alphaByKey[key] ?? this.defaultAlpha;
+      this.values[key] = lerp(this.values[key] ?? sample[key], sample[key], alpha);
     }
     return this.values;
   }
