@@ -148,16 +148,13 @@ export class Renderer {
       this.cutout.width = vw;
       this.cutout.height = vh;
     }
+    // Build the masked cutout in the video's own (unmirrored) coordinate
+    // space, since that's the space the mask was computed in — mirroring
+    // here first and masking second leaves the alpha misaligned with the
+    // pixels whenever the face isn't dead-center.
     const cctx = this.cutoutCtx;
-    cctx.save();
     cctx.clearRect(0, 0, vw, vh);
-    if (this.mirror) {
-      // Mirror the feed so it behaves like a mirror for the front camera.
-      cctx.translate(vw, 0);
-      cctx.scale(-1, 1);
-    }
     cctx.drawImage(this.video, 0, 0, vw, vh);
-    cctx.restore();
 
     cctx.globalCompositeOperation = "destination-in";
     cctx.imageSmoothingEnabled = true;
@@ -176,7 +173,16 @@ export class Renderer {
       dw = w;
       dh = w / videoRatio;
     }
+
+    ctx.save();
+    if (this.mirror) {
+      // Mirror only at the final composite step, once cutout and mask are
+      // already aligned.
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(this.cutout, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    ctx.restore();
   }
 
   _drawParticles(ctx, w, h, dt, state, color, density) {
