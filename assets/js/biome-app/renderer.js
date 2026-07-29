@@ -8,6 +8,7 @@ const TREE_LAYERS = [
 
 const MAX_PARTICLES = 70;
 const TOP_K = 3;
+const PERSON_OPACITY = 0.65;
 
 export class Renderer {
   constructor(canvas, videoEl) {
@@ -181,6 +182,8 @@ export class Renderer {
       ctx.translate(w, 0);
       ctx.scale(-1, 1);
     }
+    // Blend into the scene rather than sitting on top of it like a sticker.
+    ctx.globalAlpha = PERSON_OPACITY;
     ctx.drawImage(this.cutout, (w - dw) / 2, (h - dh) / 2, dw, dh);
     ctx.restore();
   }
