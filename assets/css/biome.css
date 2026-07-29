@@ -91,6 +91,10 @@ html.biome-html, body.biome-body {
   background: radial-gradient(circle at 50% 30%, rgba(20, 40, 28, 0.92), rgba(4, 10, 7, 0.97));
 }
 
+.biome-overlay[hidden] {
+  display: none;
+}
+
 .biome-card {
   max-width: 380px;
   text-align: center;
