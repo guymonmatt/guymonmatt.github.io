@@ -3,9 +3,11 @@ import { FaceTracker } from "./face.js";
 import { Segmenter } from "./segmentation.js";
 import { Renderer } from "./renderer.js";
 import { computeBiomeBlend } from "./biomes.js";
-import { Smoother, ambientFromClock } from "./state.js";
+import { Smoother, Pulse, ambientFromClock } from "./state.js";
 
 const INFERENCE_INTERVAL_MS = 80; // ~12fps for the two ML models
+const BLINK_THRESHOLD = 0.5;
+const MOUTH_OPEN_THRESHOLD = 0.35;
 
 const els = {
   video: document.getElementById("biome-video"),
@@ -23,10 +25,11 @@ const els = {
 const camera = new Camera(els.video);
 const faceTracker = new FaceTracker();
 const segmenter = new Segmenter();
-// Expression signals (smile, distance, tilt...) track quickly; per-person
-// geometry/color signals are smoothed slowly so they settle into a stable
-// "signature" instead of jittering with pose or lighting noise.
-const smoother = new Smoother(0.12, {
+// Expression signals (smile, distance, tilt...) track fast so the scene
+// feels immediately responsive to what you're doing right now; per-person
+// geometry/color signals stay slow so they settle into a stable "signature"
+// instead of jittering with pose or lighting noise.
+const smoother = new Smoother(0.28, {
   eyeSpacing: 0.04,
   faceAspect: 0.04,
   noseWidth: 0.04,
@@ -38,6 +41,14 @@ const smoother = new Smoother(0.12, {
   hairG: 0.05,
   hairB: 0.05,
 });
+
+// Discrete moments — a blink, opening your mouth — become brief visible
+// pulses (a burst of particles/wind) instead of just a steady-state value
+// that gets smoothed away.
+const blinkPulse = new Pulse(2.5);
+const gustPulse = new Pulse(1.2);
+let wasBlinking = false;
+let wasMouthOpen = false;
 
 let renderer = null;
 let running = false;
@@ -98,8 +109,13 @@ async function boot() {
   }
 }
 
+let lastLoopTs = null;
+
 function loop(nowMs) {
   if (!running) return;
+
+  const dt = lastLoopTs ? Math.min((nowMs - lastLoopTs) / 1000, 0.1) : 0.016;
+  lastLoopTs = nowMs;
 
   if (nowMs - lastInferenceTs >= INFERENCE_INTERVAL_MS) {
     lastInferenceTs = nowMs;
@@ -109,6 +125,8 @@ function loop(nowMs) {
   const smoothed = smoother.push(lastFaceSample);
   const ambient = ambientFromClock();
   const state = computeBiomeBlend(smoothed, ambient);
+  state.blinkPulse = blinkPulse.update(dt);
+  state.gustPulse = gustPulse.update(dt);
 
   renderer.draw(state, lastMask);
   updateLabel(state);
@@ -122,6 +140,7 @@ function runInference(nowMs) {
   try {
     if (faceTracker.ready) {
       lastFaceSample = faceTracker.detect(els.video, nowMs);
+      trackPulseTriggers(lastFaceSample);
     }
   } catch {
     lastFaceSample = null;
@@ -134,6 +153,16 @@ function runInference(nowMs) {
   } catch {
     lastMask = null;
   }
+}
+
+function trackPulseTriggers(sample) {
+  const blinking = !!sample && sample.blink > BLINK_THRESHOLD;
+  if (blinking && !wasBlinking) blinkPulse.trigger(1);
+  wasBlinking = blinking;
+
+  const mouthOpen = !!sample && sample.mouthOpen > MOUTH_OPEN_THRESHOLD;
+  if (mouthOpen && !wasMouthOpen) gustPulse.trigger(1);
+  wasMouthOpen = mouthOpen;
 }
 
 function updateLabel(state) {

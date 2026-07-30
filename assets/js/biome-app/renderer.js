@@ -101,10 +101,32 @@ export class Renderer {
     const w = this.width;
     const h = this.height;
 
+    // The whole scene visibly leans with your head tilt — a much more
+    // immediate, obvious "this is reacting to you" cue than just biasing
+    // wind direction. Clamped so an extreme tilt doesn't get disorienting.
+    const tiltAngle = Math.max(-0.16, Math.min(0.16, (state.tilt || 0) * 0.45));
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(tiltAngle);
+    ctx.translate(-w / 2, -h / 2);
+
     this._drawSky(ctx, w, h, sky);
     this._drawTrees(ctx, w, h, state, ground, foliage);
     this._drawPerson(ctx, w, h, mask);
     this._drawParticles(ctx, w, h, dt, state, particleColor, particleDensity);
+
+    ctx.restore();
+
+    // Blink pulse: a brief soft flash rather than a steady value, so the
+    // moment of blinking itself is visible instead of only ever showing up
+    // as smoothed-away noise.
+    if (state.blinkPulse > 0.01) {
+      ctx.globalAlpha = state.blinkPulse * 0.18;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = 1;
+    }
   }
 
   _drawSky(ctx, w, h, sky) {
@@ -124,7 +146,8 @@ export class Renderer {
     ctx.fillRect(0, h * 0.6, w, h * 0.4);
 
     const pan = (state.panX - 0.5) * 2;
-    const windX = Math.sin(state.tilt) * 40 + Math.sin(this.time * 0.6) * 6;
+    const gust = state.gustPulse || 0;
+    const windX = Math.sin(state.tilt) * 40 + Math.sin(this.time * 0.6) * 6 + gust * 70;
     const trunkColor = rgbToCss(lerpRgb(BARK_BASE, ground[1], 0.25));
 
     this._drawHorizon(ctx, w, h, ground);
@@ -133,7 +156,7 @@ export class Renderer {
 
     for (const tree of this.trees) {
       const layer = TREE_LAYERS[tree.layerIndex];
-      const sway = Math.sin(this.time * 1.2 + tree.seed * 6.283) * 3 * (1 + state.energy);
+      const sway = Math.sin(this.time * 1.2 + tree.seed * 6.283) * 3 * (1 + state.energy + gust * 2);
       const px = tree.x * w - pan * layer.parallax * w * 12 + windX * (tree.layerIndex + 1) * 0.15;
       const py = tree.y * h;
       const scale = tree.scale;
@@ -394,9 +417,12 @@ export class Renderer {
   }
 
   _drawParticles(ctx, w, h, dt, state, color, density) {
-    const activeCount = Math.round(MAX_PARTICLES * Math.max(0.15, density) * (0.6 + 0.4 * state.energy));
+    const gust = state.gustPulse || 0;
+    const activeCount = Math.round(
+      MAX_PARTICLES * Math.min(1, Math.max(0.15, density) * (0.6 + 0.4 * state.energy) + gust * 0.5)
+    );
     const css = rgbToCss(color, 1);
-    const windX = Math.sin(state.tilt) * 30;
+    const windX = Math.sin(state.tilt) * 30 + gust * 90;
 
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];

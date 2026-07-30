@@ -94,8 +94,11 @@ export const BIOMES = [
  * ambient: { dayWarmth } 0..1, derived from the device clock.
  */
 export function computeBiomeBlend(dataPoints, ambient) {
-  const smile = dataPoints?.smile ?? 0.3;
-  const size = dataPoints?.size ?? 0.4;
+  // Amplified around the midpoint so moderate expression changes produce a
+  // visibly bigger swing in the biome, rather than the blend staying close
+  // to "average" most of the time.
+  const smile = amplify(dataPoints?.smile ?? 0.3);
+  const size = amplify(dataPoints?.size ?? 0.4);
   const browRaise = dataPoints?.browRaise ?? 0.2;
   const dayWarmth = ambient?.dayWarmth ?? 0.5;
 
@@ -108,12 +111,13 @@ export function computeBiomeBlend(dataPoints, ambient) {
   const faceWarmthBias = clamp01(0.5 * eyeSpacing + 0.5 * noseWidth);
   const faceDensityBias = clamp01(0.5 * faceAspect + 0.5 * jawWidth);
 
-  // Live expression carries the most weight so the scene still visibly
-  // reacts to you; the faceprint bias shifts where that reaction centers,
-  // so two people with the same expression land in different places.
-  const warmth = clamp01(0.45 * smile + 0.3 * dayWarmth + 0.25 * faceWarmthBias);
-  const density = clamp01(0.6 * size + 0.4 * faceDensityBias);
-  const energy = clamp01(0.5 + 0.5 * browRaise);
+  // Live expression now dominates even more heavily so the scene reads as
+  // directly driven by what you're doing right now; the faceprint bias
+  // still shifts where that reaction centers, so two people with the same
+  // expression land in different places.
+  const warmth = clamp01(0.62 * smile + 0.18 * dayWarmth + 0.2 * faceWarmthBias);
+  const density = clamp01(0.75 * size + 0.25 * faceDensityBias);
+  const energy = clamp01(0.25 + 0.85 * browRaise);
 
   const skin = {
     r: dataPoints?.skinR ?? 200,
@@ -130,7 +134,11 @@ export function computeBiomeBlend(dataPoints, ambient) {
     const dw = biome.warmth - warmth;
     const dd = biome.density - density;
     const distSq = dw * dw + dd * dd;
-    const weight = 1 / (distSq + 0.02);
+    // Smaller epsilon = more decisive snapping toward the nearest biome
+    // instead of a constant blurry average of several — makes moving
+    // through the warmth/density space read as a clearer, more reactive
+    // change rather than a subtle tint shift.
+    const weight = 1 / (distSq + 0.01);
     return { biome, weight };
   });
 
@@ -155,4 +163,9 @@ export function computeBiomeBlend(dataPoints, ambient) {
 
 function clamp01(v) {
   return Math.max(0, Math.min(1, v));
+}
+
+/** Stretches a 0..1 value away from the 0.5 midpoint by factor k. */
+function amplify(v, k = 1.7) {
+  return clamp01(0.5 + (v - 0.5) * k);
 }

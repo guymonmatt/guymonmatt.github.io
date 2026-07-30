@@ -95,6 +95,7 @@ export class FaceTracker {
     const browRaise = clamp01(
       ((blendshapes.browOuterUpLeft || 0) + (blendshapes.browOuterUpRight || 0)) / 2
     );
+    const mouthOpen = clamp01(blendshapes.jawOpen || 0);
 
     let sumX = 0;
     let sumY = 0;
@@ -137,6 +138,7 @@ export class FaceTracker {
       smile,
       blink,
       browRaise,
+      mouthOpen,
       x,
       y,
       eyeSpacing,
