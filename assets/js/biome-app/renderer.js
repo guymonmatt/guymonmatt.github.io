@@ -113,65 +113,67 @@ export class Renderer {
       const py = tree.y * h;
       const scale = tree.scale;
 
-      ctx.globalAlpha = layer.opacity;
       ctx.strokeStyle = trunkColor;
 
-      // Slender tapered trunk: a thick lower pass and a thinner upper pass
-      // over the same curve gives the illusion of a taper without needing
-      // canvas' nonexistent variable-width strokes.
+      // A wobbly, faceted line (not a smooth bezier) plus a second, fainter
+      // offset pass over nearly the same path — the classic "rough line
+      // redrawn" look of a pencil/ink sketch rather than a clean vector.
       const trunkHeight = 46 * scale;
       const bend = tree.trunkBend * scale;
+      const jitter = tree.trunkJitter * scale;
       const topX = px + bend * 0.6 + sway * 0.4;
       const topY = py - trunkHeight;
+      const midX = px + bend * 0.35 + jitter + sway * 0.15;
+      const midY = py - trunkHeight * 0.55;
 
+      ctx.globalAlpha = layer.opacity;
+      ctx.lineWidth = Math.max(1, 2.6 * scale);
       ctx.beginPath();
       ctx.moveTo(px, py);
-      ctx.quadraticCurveTo(px + bend * 0.5, py - trunkHeight * 0.5, topX, topY);
-      ctx.lineWidth = Math.max(1, 3.2 * scale);
+      ctx.lineTo(midX, midY);
+      ctx.lineTo(topX, topY);
       ctx.stroke();
 
+      ctx.globalAlpha = layer.opacity * 0.4;
+      ctx.lineWidth = Math.max(0.6, 1.2 * scale);
       ctx.beginPath();
-      ctx.moveTo(px + bend * 0.25, py - trunkHeight * 0.35);
-      ctx.quadraticCurveTo(px + bend * 0.5, py - trunkHeight * 0.75, topX, topY);
-      ctx.lineWidth = Math.max(0.6, 1.4 * scale);
+      ctx.moveTo(px + 1.5 * scale, py);
+      ctx.lineTo(midX - 1.5 * scale, midY - 1 * scale);
+      ctx.lineTo(topX + 1 * scale, topY);
       ctx.stroke();
 
-      // A couple of thin branches forking off near the top, like the
-      // reference illustration, rather than the canopy sitting flush on
-      // the trunk.
+      // A couple of thin, slightly kinked branches forking off near the
+      // top, rather than the canopy sitting flush on the trunk.
       const branchOriginY = topY + trunkHeight * 0.15;
-      ctx.lineWidth = Math.max(0.5, 1.1 * scale);
+      ctx.globalAlpha = layer.opacity;
+      ctx.lineWidth = Math.max(0.5, 1 * scale);
       for (const angle of [tree.branchAngle1, tree.branchAngle2]) {
         const len = 20 * scale;
+        const kinkX = topX + Math.sin(angle) * len * 0.55;
+        const kinkY = branchOriginY - Math.cos(angle) * len * 0.5 + jitter * 0.3;
         const endX = topX + Math.sin(angle) * len;
         const endY = branchOriginY - Math.cos(angle) * len * 0.85;
         ctx.beginPath();
         ctx.moveTo(topX, branchOriginY);
-        ctx.quadraticCurveTo(
-          topX + Math.sin(angle) * len * 0.5,
-          branchOriginY - len * 0.3,
-          endX,
-          endY
-        );
+        ctx.lineTo(kinkX, kinkY);
+        ctx.lineTo(endX, endY);
         ctx.stroke();
       }
 
-      // Foliage: small soft clumps scattered along the branch structure
-      // instead of solid circles, for a fluffier, hand-painted feel.
-      for (const dab of tree.canopyDabs) {
-        ctx.globalAlpha = layer.opacity * dab.alpha;
-        ctx.fillStyle = rgbToCss(dab.tone < 0.5 ? foliage[0] : foliage[1]);
+      // Foliage: short scribbled strokes clustered like pencil hatching,
+      // instead of filled blobs — reads as sketched rather than painted.
+      for (const stroke of tree.canopyDabs) {
+        ctx.globalAlpha = layer.opacity * stroke.alpha;
+        ctx.strokeStyle = rgbToCss(stroke.tone < 0.5 ? foliage[0] : foliage[1]);
+        ctx.lineWidth = Math.max(0.6, 1.3 * scale);
+        const cx = topX + stroke.dx * scale + sway * 0.6;
+        const cy = topY + stroke.dy * scale;
+        const hx = (Math.cos(stroke.angle) * stroke.length * scale) / 2;
+        const hy = (Math.sin(stroke.angle) * stroke.length * scale) / 2;
         ctx.beginPath();
-        ctx.ellipse(
-          topX + dab.dx * scale + sway * 0.6,
-          topY + dab.dy * scale,
-          dab.r * scale,
-          dab.r * 0.75 * scale,
-          0,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
+        ctx.moveTo(cx - hx, cy - hy);
+        ctx.lineTo(cx + hx, cy + hy);
+        ctx.stroke();
       }
     }
     ctx.globalAlpha = 1;
@@ -272,14 +274,15 @@ function generateTrees(w, h) {
         const clumpDist = 12 + rand() * 30;
         const cx = Math.sin(clumpAngle) * clumpDist;
         const cy = -8 - rand() * 30 - clumpDist * 0.3;
-        const dabsInClump = 3 + Math.floor(rand() * 4);
-        for (let d = 0; d < dabsInClump; d++) {
+        const strokesInClump = 4 + Math.floor(rand() * 5);
+        for (let d = 0; d < strokesInClump; d++) {
           canopyDabs.push({
-            dx: cx + (rand() - 0.5) * 13,
-            dy: cy + (rand() - 0.5) * 11,
-            r: 4 + rand() * 5,
+            dx: cx + (rand() - 0.5) * 14,
+            dy: cy + (rand() - 0.5) * 12,
+            angle: rand() * Math.PI * 2,
+            length: 5 + rand() * 7,
             tone: rand(),
-            alpha: 0.55 + rand() * 0.35,
+            alpha: 0.5 + rand() * 0.4,
           });
         }
       }
@@ -291,6 +294,7 @@ function generateTrees(w, h) {
         seed: rand(),
         layerIndex,
         trunkBend: (rand() - 0.5) * 10,
+        trunkJitter: (rand() - 0.5) * 14,
         branchAngle1: 0.35 + rand() * 0.3,
         branchAngle2: -(0.35 + rand() * 0.3),
         canopyDabs,
