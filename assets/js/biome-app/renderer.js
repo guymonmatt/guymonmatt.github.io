@@ -9,6 +9,7 @@ const TREE_LAYERS = [
 const MAX_PARTICLES = 70;
 const TOP_K = 3;
 const PERSON_OPACITY = 0.65;
+const BARK_BASE = { r: 150, g: 114, b: 92 };
 
 export class Renderer {
   constructor(canvas, videoEl) {
@@ -101,6 +102,9 @@ export class Renderer {
 
     const pan = (state.panX - 0.5) * 2;
     const windX = Math.sin(state.tilt) * 40 + Math.sin(this.time * 0.6) * 6;
+    const trunkColor = rgbToCss(lerpRgb(BARK_BASE, ground[1], 0.25));
+
+    ctx.lineCap = "round";
 
     for (const tree of this.trees) {
       const layer = TREE_LAYERS[tree.layerIndex];
@@ -110,20 +114,65 @@ export class Renderer {
       const scale = tree.scale;
 
       ctx.globalAlpha = layer.opacity;
-      const foliageColor = tree.colorMix < 0.5 ? foliage[0] : foliage[1];
-      ctx.fillStyle = rgbToCss(foliageColor);
+      ctx.strokeStyle = trunkColor;
 
-      // Trunk
-      ctx.fillStyle = rgbToCss(ground[1]);
-      ctx.fillRect(px - 3 * scale, py - 10 * scale, 6 * scale, 40 * scale);
+      // Slender tapered trunk: a thick lower pass and a thinner upper pass
+      // over the same curve gives the illusion of a taper without needing
+      // canvas' nonexistent variable-width strokes.
+      const trunkHeight = 46 * scale;
+      const bend = tree.trunkBend * scale;
+      const topX = px + bend * 0.6 + sway * 0.4;
+      const topY = py - trunkHeight;
 
-      // Canopy: three overlapping soft circles
-      ctx.fillStyle = rgbToCss(foliageColor);
       ctx.beginPath();
-      ctx.arc(px + sway, py - 30 * scale, 26 * scale, 0, Math.PI * 2);
-      ctx.arc(px - 18 * scale + sway, py - 15 * scale, 20 * scale, 0, Math.PI * 2);
-      ctx.arc(px + 18 * scale + sway, py - 15 * scale, 20 * scale, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(px + bend * 0.5, py - trunkHeight * 0.5, topX, topY);
+      ctx.lineWidth = Math.max(1, 3.2 * scale);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(px + bend * 0.25, py - trunkHeight * 0.35);
+      ctx.quadraticCurveTo(px + bend * 0.5, py - trunkHeight * 0.75, topX, topY);
+      ctx.lineWidth = Math.max(0.6, 1.4 * scale);
+      ctx.stroke();
+
+      // A couple of thin branches forking off near the top, like the
+      // reference illustration, rather than the canopy sitting flush on
+      // the trunk.
+      const branchOriginY = topY + trunkHeight * 0.15;
+      ctx.lineWidth = Math.max(0.5, 1.1 * scale);
+      for (const angle of [tree.branchAngle1, tree.branchAngle2]) {
+        const len = 20 * scale;
+        const endX = topX + Math.sin(angle) * len;
+        const endY = branchOriginY - Math.cos(angle) * len * 0.85;
+        ctx.beginPath();
+        ctx.moveTo(topX, branchOriginY);
+        ctx.quadraticCurveTo(
+          topX + Math.sin(angle) * len * 0.5,
+          branchOriginY - len * 0.3,
+          endX,
+          endY
+        );
+        ctx.stroke();
+      }
+
+      // Foliage: small soft clumps scattered along the branch structure
+      // instead of solid circles, for a fluffier, hand-painted feel.
+      for (const dab of tree.canopyDabs) {
+        ctx.globalAlpha = layer.opacity * dab.alpha;
+        ctx.fillStyle = rgbToCss(dab.tone < 0.5 ? foliage[0] : foliage[1]);
+        ctx.beginPath();
+        ctx.ellipse(
+          topX + dab.dx * scale + sway * 0.6,
+          topY + dab.dy * scale,
+          dab.r * scale,
+          dab.r * 0.75 * scale,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -213,13 +262,38 @@ function generateTrees(w, h) {
   const trees = [];
   TREE_LAYERS.forEach((layer, layerIndex) => {
     for (let i = 0; i < layer.count; i++) {
+      // Foliage as several small clumps (like the reference illustration's
+      // fluffy leaf clusters along branches) rather than one round mass.
+      // Distant/back-layer trees get fewer, simpler clumps.
+      const clumpCount = 2 + layerIndex + Math.floor(rand() * 2);
+      const canopyDabs = [];
+      for (let c = 0; c < clumpCount; c++) {
+        const clumpAngle = (rand() - 0.5) * 1.7;
+        const clumpDist = 12 + rand() * 30;
+        const cx = Math.sin(clumpAngle) * clumpDist;
+        const cy = -8 - rand() * 30 - clumpDist * 0.3;
+        const dabsInClump = 3 + Math.floor(rand() * 4);
+        for (let d = 0; d < dabsInClump; d++) {
+          canopyDabs.push({
+            dx: cx + (rand() - 0.5) * 13,
+            dy: cy + (rand() - 0.5) * 11,
+            r: 4 + rand() * 5,
+            tone: rand(),
+            alpha: 0.55 + rand() * 0.35,
+          });
+        }
+      }
+
       trees.push({
         x: (i + 0.5) / layer.count + (rand() - 0.5) * 0.06,
         y: layer.minY + rand() * (layer.maxY - layer.minY),
         scale: layer.minScale + rand() * (layer.maxScale - layer.minScale),
         seed: rand(),
-        colorMix: rand(),
         layerIndex,
+        trunkBend: (rand() - 0.5) * 10,
+        branchAngle1: 0.35 + rand() * 0.3,
+        branchAngle2: -(0.35 + rand() * 0.3),
+        canopyDabs,
       });
     }
   });
