@@ -26,6 +26,8 @@ export class Renderer {
     this.width = 0;
     this.height = 0;
     this.trees = [];
+    this.bushes = [];
+    this.horizonPoints = [];
     this.particles = [];
     this.time = 0;
     this.lastTs = null;
@@ -64,6 +66,8 @@ export class Renderer {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.trees = generateTrees(this.width, this.height);
+    this.bushes = generateBushes(this.width, this.height);
+    this.horizonPoints = generateHorizonPoints();
     if (this.particles.length === 0) this.particles = generateParticles(this.width, this.height);
   }
 
@@ -123,6 +127,8 @@ export class Renderer {
     const windX = Math.sin(state.tilt) * 40 + Math.sin(this.time * 0.6) * 6;
     const trunkColor = rgbToCss(lerpRgb(BARK_BASE, ground[1], 0.25));
 
+    this._drawHorizon(ctx, w, h, ground);
+
     ctx.lineCap = "round";
 
     for (const tree of this.trees) {
@@ -151,7 +157,72 @@ export class Renderer {
         });
       }
     }
+
+    this._drawBushes(ctx, w, h, foliage);
     ctx.globalAlpha = 1;
+  }
+
+  /** A soft, slightly wavering horizon instead of a hard rectangle edge —
+   * reads as a drawn line rather than a flat-shaded boundary. */
+  _drawHorizon(ctx, w, h, ground) {
+    const y = h * 0.6;
+    const points = this.horizonPoints.map((p) => [p.xFrac * w, y + p.yJitter]);
+    const color = rgbToCss(lerpRgb(ground[0], { r: 0, g: 0, b: 0 }, 0.22));
+
+    ctx.globalAlpha = 0.8;
+    if (this.rc) {
+      this.rc.linearPath(points, {
+        stroke: color,
+        strokeWidth: 1.4,
+        roughness: 2,
+        bowing: 2,
+        seed: 555,
+      });
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      points.forEach(([x, py], i) => (i === 0 ? ctx.moveTo(x, py) : ctx.lineTo(x, py)));
+      ctx.stroke();
+    }
+  }
+
+  /** Small foreground foliage clumps along the ground, using the same
+   * hachure-clump technique as tree canopies but with no trunk. */
+  _drawBushes(ctx, w, h, foliage) {
+    for (const bush of this.bushes) {
+      const bx = bush.x * w;
+      const by = h * bush.y;
+      ctx.globalAlpha = 0.9;
+      for (const clump of bush.clumps) {
+        const cx = bx + clump.cx * bush.scale;
+        const cy = by + clump.cy * bush.scale;
+        const tone = clump.tone < 0.5 ? foliage[0] : foliage[1];
+
+        if (this.rc) {
+          const points = clump.points.map((p) => [
+            cx + p.dx * bush.scale,
+            cy + p.dy * bush.scale,
+          ]);
+          this.rc.polygon(points, {
+            fill: rgbToCss(tone),
+            fillStyle: "hachure",
+            fillWeight: 0.8,
+            hachureGap: 3,
+            hachureAngle: clump.hachureAngle,
+            stroke: rgbToCss(tone),
+            strokeWidth: 0.8,
+            roughness: 1.7,
+            seed: clump.seed,
+          });
+        } else {
+          ctx.fillStyle = rgbToCss(tone, 0.75);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, 9 * bush.scale, 6 * bush.scale, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
   }
 
   /** Genuinely hand-sketched rendering via roughjs: wobbly linear paths for
@@ -374,18 +445,10 @@ function generateTrees(w, h) {
 
         // roughjs-only: an irregular rounded polygon outline roughjs fills
         // with a genuine hachure sketch texture.
-        const baseR = 9 + rand() * 6;
-        const vertexCount = 7 + Math.floor(rand() * 3);
-        const points = [];
-        for (let v = 0; v < vertexCount; v++) {
-          const angle = (v / vertexCount) * Math.PI * 2 + (rand() - 0.5) * 0.3;
-          const r = baseR * (0.7 + rand() * 0.6);
-          points.push({ dx: Math.cos(angle) * r, dy: Math.sin(angle) * r * 0.85 });
-        }
         canopyClumps.push({
           cx,
           cy,
-          points,
+          points: makeClumpPolygon(rand, 9 + rand() * 6),
           tone,
           seed: 1 + Math.floor(rand() * 99999),
           hachureAngle: -60 + rand() * 60,
@@ -410,6 +473,62 @@ function generateTrees(w, h) {
     }
   });
   return trees;
+}
+
+function makeClumpPolygon(rand, baseR) {
+  const vertexCount = 7 + Math.floor(rand() * 3);
+  const points = [];
+  for (let v = 0; v < vertexCount; v++) {
+    const angle = (v / vertexCount) * Math.PI * 2 + (rand() - 0.5) * 0.3;
+    const r = baseR * (0.7 + rand() * 0.6);
+    points.push({ dx: Math.cos(angle) * r, dy: Math.sin(angle) * r * 0.85 });
+  }
+  return points;
+}
+
+const BUSH_COUNT = 10;
+
+function generateBushes(w, h) {
+  const rand = mulberry32(4242);
+  const bushes = [];
+  for (let i = 0; i < BUSH_COUNT; i++) {
+    const scale = 0.6 + rand() * 0.9;
+    const clumpCount = 1 + Math.floor(rand() * 2);
+    const clumps = [];
+    for (let c = 0; c < clumpCount; c++) {
+      const cx = (rand() - 0.5) * 22;
+      const cy = (rand() - 0.5) * 8;
+      clumps.push({
+        cx,
+        cy,
+        points: makeClumpPolygon(rand, 7 + rand() * 5),
+        tone: rand(),
+        seed: 1 + Math.floor(rand() * 99999),
+        hachureAngle: -60 + rand() * 60,
+      });
+    }
+    bushes.push({
+      x: (i + 0.5) / BUSH_COUNT + (rand() - 0.5) * 0.08,
+      y: 0.61 + rand() * 0.14,
+      scale,
+      clumps,
+    });
+  }
+  return bushes;
+}
+
+const HORIZON_POINT_COUNT = 12;
+
+function generateHorizonPoints() {
+  const rand = mulberry32(777);
+  const points = [];
+  for (let i = 0; i <= HORIZON_POINT_COUNT; i++) {
+    points.push({
+      xFrac: i / HORIZON_POINT_COUNT,
+      yJitter: (rand() - 0.5) * 14,
+    });
+  }
+  return points;
 }
 
 function generateParticles(w, h) {
