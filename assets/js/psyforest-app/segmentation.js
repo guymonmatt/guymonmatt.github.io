@@ -21,7 +21,10 @@ export class Segmenter {
     this.segmenter = await ImageSegmenter.createFromOptions(fileset, {
       baseOptions: {
         modelAssetPath: MODEL_URL,
-        delegate: "GPU",
+        // CPU, not GPU: this app also runs a Three.js WebGL scene on the
+        // same page, and contending with MediaPipe's GPU delegate for the
+        // WebGL context produced degenerate (near-uniform) mask output.
+        delegate: "CPU",
       },
       runningMode: "VIDEO",
       outputCategoryMask: false,

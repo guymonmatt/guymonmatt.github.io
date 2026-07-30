@@ -49,7 +49,10 @@ export class FaceTracker {
     this.landmarker = await FaceLandmarker.createFromOptions(fileset, {
       baseOptions: {
         modelAssetPath: MODEL_URL,
-        delegate: "GPU",
+        // CPU, not GPU: this app also runs a Three.js WebGL scene on the
+        // same page, and contending with MediaPipe's GPU delegate for the
+        // WebGL context produced degenerate output.
+        delegate: "CPU",
       },
       outputFaceBlendshapes: true,
       runningMode: "VIDEO",

@@ -45,6 +45,14 @@ export class Forest3D {
       camera.position.set(0, 2.4, 0);
       this.camera = camera;
 
+      // A persistent, mutated-in-place color rather than reassigning fresh
+      // Color instances every frame. Set directly on scene.background (not
+      // just the renderer's clear color) so the canvas can never fall back
+      // to its native default white if a render pass leaves any pixel
+      // untouched.
+      this.bgColor = new THREE.Color(0x0a0212);
+      scene.background = this.bgColor;
+
       this.fog = new THREE.FogExp2(0x0a0212, 0.028);
       scene.fog = this.fog;
 
@@ -191,7 +199,6 @@ export class Forest3D {
   /** state comes from computePsychedelicState(); dt is seconds since last frame. */
   draw(state, dt) {
     if (!this.ready) return;
-    const THREE = this.THREE;
     this.time += dt;
 
     const gust = state.gustPulse || 0;
@@ -211,15 +218,11 @@ export class Forest3D {
     this.followLight.position.copy(this.camera.position);
     this.followLight.intensity = 1.2 + state.energy * 1.5 + blink * 3;
 
-    const fogColor = new THREE.Color().setHSL(state.hue / 360, state.saturation * 0.5, 0.06);
-    this.fog.color = fogColor;
-    this.renderer.setClearColor(fogColor, 1);
-    this.ambientLight.color = new THREE.Color().setHSL(
-      ((state.hue + 40) % 360) / 360,
-      state.saturation * 0.6,
-      0.35
-    );
-    this.groundMat.color = new THREE.Color().setHSL(state.hue / 360, state.saturation * 0.4, 0.05);
+    this.bgColor.setHSL(state.hue / 360, state.saturation * 0.5, 0.06);
+    this.fog.color.copy(this.bgColor);
+    this.renderer.setClearColor(this.bgColor, 1);
+    this.ambientLight.color.setHSL(((state.hue + 40) % 360) / 360, state.saturation * 0.6, 0.35);
+    this.groundMat.color.setHSL(state.hue / 360, state.saturation * 0.4, 0.05);
 
     for (const tree of this.trees) {
       const hue = (state.hue + tree.hueOffset) % 360;
@@ -248,7 +251,15 @@ export class Forest3D {
     }
 
     if (this.composer) {
-      this.composer.render();
+      try {
+        this.composer.render();
+      } catch {
+        // Self-heal: if the bloom pipeline breaks at runtime, stop trying
+        // it every frame and fall back to a plain render instead of
+        // leaving the canvas broken/blank.
+        this.composer = null;
+        this.renderer.render(this.scene, this.camera);
+      }
     } else {
       this.renderer.render(this.scene, this.camera);
     }
