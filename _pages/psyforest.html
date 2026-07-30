@@ -1,0 +1,60 @@
+---
+layout: biome
+title: "Psychedelic Forest"
+permalink: /psyforest/
+excerpt: "A 3D forest of glowing, color-shifting flowers that reacts to who's looking at it."
+sitemap: true
+---
+
+<div id="psyforest-app" class="psyforest-app">
+
+  <video id="psyforest-video" class="psyforest-video" playsinline muted autoplay></video>
+  <canvas id="psyforest-canvas" class="psyforest-canvas"></canvas>
+  <canvas id="psyforest-overlay" class="psyforest-overlay"></canvas>
+
+  <div id="psyforest-hud" class="psyforest-hud">
+    <a href="{{ site.baseurl }}/" class="psyforest-back" aria-label="Back to site">&larr;</a>
+    <div class="psyforest-label" id="psyforest-label">&nbsp;</div>
+    <button id="psyforest-flip" class="psyforest-flip" aria-label="Switch camera" hidden>&#8635;</button>
+  </div>
+
+  <div id="psyforest-intro" class="psyforest-overlay-panel">
+    <div class="psyforest-card">
+      <h1>Psychedelic Forest</h1>
+      <p>
+        This page reads your camera feed on your device &mdash; nothing is
+        ever uploaded or stored &mdash; and grows a 3D forest of glowing,
+        color-shifting flowers around you. The palette is seeded from your
+        face and shifts with your expression, so it looks a little
+        different for everyone.
+      </p>
+      <button id="psyforest-start" class="psyforest-button">Enter the forest</button>
+      <p class="psyforest-fineprint">Requires camera access and WebGL. Works best in Chrome or Safari on a phone.</p>
+    </div>
+  </div>
+
+  <div id="psyforest-error" class="psyforest-overlay-panel" hidden>
+    <div class="psyforest-card">
+      <h1>Can't reach the camera</h1>
+      <p id="psyforest-error-message">Camera access was denied or isn't available on this device.</p>
+      <button id="psyforest-retry" class="psyforest-button">Try again</button>
+    </div>
+  </div>
+
+  <div id="psyforest-loading" class="psyforest-overlay-panel" hidden>
+    <div class="psyforest-card">
+      <p>Growing the forest&hellip;</p>
+    </div>
+  </div>
+
+</div>
+
+<link rel="stylesheet" href="{{ site.baseurl }}/assets/css/psyforest.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module" src="{{ site.baseurl }}/assets/js/psyforest-app/main.js"></script>

@@ -26,3 +26,8 @@ A mobile web app that opens your camera and grows a different color forest or bi
 [Enter the biome](/biome/){: .btn .btn--primary}
 
 
+### Psychedelic Forest
+A 3D Three.js forest of glowing, color-cycling flowers whose palette is seeded from your face and shifts with your expression, so it looks a little different for everyone who looks at it.  
+[Enter the forest](/psyforest/){: .btn .btn--primary}
+
+

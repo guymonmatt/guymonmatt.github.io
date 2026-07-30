@@ -1,0 +1,138 @@
+.psyforest-app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #05010a;
+}
+
+.psyforest-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Hidden source used for analysis/compositing; the canvases are what's shown. */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.psyforest-canvas,
+.psyforest-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.psyforest-canvas {
+  z-index: 1;
+}
+
+/* Transparent 2D layer the segmented person is composited onto, stacked
+   above the Three.js WebGL canvas. */
+.psyforest-overlay {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.psyforest-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 14px 0 14px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.psyforest-hud > * {
+  pointer-events: auto;
+}
+
+.psyforest-back,
+.psyforest-flip {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(10, 2, 20, 0.55);
+  color: #f4ecff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+}
+
+.psyforest-label {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.psyforest-overlay-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 30%, rgba(40, 12, 55, 0.92), rgba(6, 2, 12, 0.97));
+  color: #f4ecff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.psyforest-overlay-panel[hidden] {
+  display: none;
+}
+
+.psyforest-card {
+  max-width: 380px;
+  text-align: center;
+}
+
+.psyforest-card h1 {
+  font-size: 22px;
+  margin: 0 0 12px 0;
+}
+
+.psyforest-card p {
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.9;
+  margin: 0 0 20px 0;
+}
+
+.psyforest-fineprint {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 14px;
+}
+
+.psyforest-button {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff4fd8, #7a5bff);
+  color: #0a0212;
+  cursor: pointer;
+}
+
+.psyforest-button:active {
+  transform: scale(0.97);
+}
