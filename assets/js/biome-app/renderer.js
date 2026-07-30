@@ -1,9 +1,9 @@
 import { blendPalette, blendColor, lerpRgb, rgbToCss } from "./color.js";
 
 const TREE_LAYERS = [
-  { count: 9, minY: 0.62, maxY: 0.7, minScale: 0.35, maxScale: 0.55, opacity: 0.55, parallax: 0.01 },
-  { count: 8, minY: 0.7, maxY: 0.82, minScale: 0.6, maxScale: 0.9, opacity: 0.78, parallax: 0.025 },
-  { count: 6, minY: 0.82, maxY: 0.98, minScale: 1.0, maxScale: 1.5, opacity: 1.0, parallax: 0.05 },
+  { count: 6, minY: 0.61, maxY: 0.71, minScale: 0.3, maxScale: 0.55, opacity: 0.5, parallax: 0.01 },
+  { count: 5, minY: 0.7, maxY: 0.84, minScale: 0.6, maxScale: 1.0, opacity: 0.75, parallax: 0.025 },
+  { count: 4, minY: 0.83, maxY: 0.99, minScale: 1.05, maxScale: 1.7, opacity: 1.0, parallax: 0.05 },
 ];
 
 const MAX_PARTICLES = 70;
@@ -207,12 +207,11 @@ export class Renderer {
           this.rc.polygon(points, {
             fill: rgbToCss(tone),
             fillStyle: "hachure",
-            fillWeight: 0.8,
-            hachureGap: 3,
+            fillWeight: 0.5,
+            hachureGap: 2,
             hachureAngle: clump.hachureAngle,
-            stroke: rgbToCss(tone),
-            strokeWidth: 0.8,
-            roughness: 1.7,
+            stroke: "none",
+            roughness: 1.2,
             seed: clump.seed,
           });
         } else {
@@ -267,15 +266,18 @@ export class Renderer {
       const cx = topX + clump.cx * scale + pts.sway * 0.6;
       const cy = topY + clump.cy * scale;
       const points = clump.points.map((p) => [cx + p.dx * scale, cy + p.dy * scale]);
+      // No outline stroke — a bold outline around every small blob is what
+      // reads as a crayon/cartoon sticker. Letting the hachure fill alone
+      // define the silhouette, with fine, tightly-spaced lines, reads as
+      // pencil shading instead.
       this.rc.polygon(points, {
         fill: rgbToCss(clump.tone < 0.5 ? foliage[0] : foliage[1]),
         fillStyle: "hachure",
-        fillWeight: Math.max(0.6, 1 * scale),
-        hachureGap: Math.max(2.2, 4.5 * scale),
+        fillWeight: Math.max(0.4, 0.55 * scale),
+        hachureGap: Math.max(1.4, 2.4 * scale),
         hachureAngle: clump.hachureAngle,
-        stroke: rgbToCss(clump.tone < 0.5 ? foliage[0] : foliage[1]),
-        strokeWidth: Math.max(0.6, 1 * scale),
-        roughness: 1.8,
+        stroke: "none",
+        roughness: 1.2,
         seed: clump.seed,
       });
     }
@@ -456,7 +458,7 @@ function generateTrees(w, h) {
       }
 
       trees.push({
-        x: (i + 0.5) / layer.count + (rand() - 0.5) * 0.06,
+        x: (i + 0.5) / layer.count + (rand() - 0.5) * 0.16,
         y: layer.minY + rand() * (layer.maxY - layer.minY),
         scale: layer.minScale + rand() * (layer.maxScale - layer.minScale),
         seed: rand(),
