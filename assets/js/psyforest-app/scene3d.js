@@ -213,7 +213,12 @@ export class Forest3D {
     this.camera.position.z = Math.sin(orbitAngle) * orbitRadius;
     this.camera.position.y = 2.2 + (0.5 - state.panY) * 1.5;
     this.camera.lookAt(0, 2 + state.energy * 1.5, 0);
-    this.camera.rotation.z = Math.max(-0.2, Math.min(0.2, state.tilt * 0.6));
+    // Add the head-tilt roll as a proper rotation around the camera's own
+    // view axis (quaternion composition via rotateZ), not by overwriting
+    // the Euler .z component lookAt() just computed — directly assigning
+    // rotation.z after lookAt() recombines Euler angles in a way that goes
+    // degenerate at certain orbit angles and can flip the view upside down.
+    this.camera.rotateZ(Math.max(-0.2, Math.min(0.2, state.tilt * 0.6)));
 
     this.followLight.position.copy(this.camera.position);
     this.followLight.intensity = 1.2 + state.energy * 1.5 + blink * 3;
