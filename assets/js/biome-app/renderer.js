@@ -10,6 +10,7 @@ const MAX_PARTICLES = 70;
 const TOP_K = 3;
 const PERSON_OPACITY = 0.65;
 const BARK_BASE = { r: 150, g: 114, b: 92 };
+const ROUGH_CDN = "https://cdn.jsdelivr.net/npm/roughjs@4.6.6/+esm";
 
 export class Renderer {
   constructor(canvas, videoEl) {
@@ -30,8 +31,26 @@ export class Renderer {
     this.lastTs = null;
     this.mirror = true;
 
+    // Genuinely hand-sketched rendering (wobbly lines, hachure fills) via
+    // roughjs, loaded from a CDN like the MediaPipe models. If it fails to
+    // load for any reason, _drawTrees falls back to the hand-rolled sketch
+    // look that was already in place, so a network hiccup never breaks
+    // the scene — it just looks slightly less textured.
+    this.rc = null;
+    this._loadRough();
+
     this.resize();
     window.addEventListener("resize", () => this.resize());
+  }
+
+  async _loadRough() {
+    try {
+      const mod = await import(ROUGH_CDN);
+      const rough = mod.default || mod;
+      this.rc = rough.canvas(this.canvas);
+    } catch {
+      this.rc = null;
+    }
   }
 
   resize() {
@@ -113,11 +132,6 @@ export class Renderer {
       const py = tree.y * h;
       const scale = tree.scale;
 
-      ctx.strokeStyle = trunkColor;
-
-      // A wobbly, faceted line (not a smooth bezier) plus a second, fainter
-      // offset pass over nearly the same path — the classic "rough line
-      // redrawn" look of a pencil/ink sketch rather than a clean vector.
       const trunkHeight = 46 * scale;
       const bend = tree.trunkBend * scale;
       const jitter = tree.trunkJitter * scale;
@@ -125,58 +139,126 @@ export class Renderer {
       const topY = py - trunkHeight;
       const midX = px + bend * 0.35 + jitter + sway * 0.15;
       const midY = py - trunkHeight * 0.55;
-
-      ctx.globalAlpha = layer.opacity;
-      ctx.lineWidth = Math.max(1, 2.6 * scale);
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(midX, midY);
-      ctx.lineTo(topX, topY);
-      ctx.stroke();
-
-      ctx.globalAlpha = layer.opacity * 0.4;
-      ctx.lineWidth = Math.max(0.6, 1.2 * scale);
-      ctx.beginPath();
-      ctx.moveTo(px + 1.5 * scale, py);
-      ctx.lineTo(midX - 1.5 * scale, midY - 1 * scale);
-      ctx.lineTo(topX + 1 * scale, topY);
-      ctx.stroke();
-
-      // A couple of thin, slightly kinked branches forking off near the
-      // top, rather than the canopy sitting flush on the trunk.
       const branchOriginY = topY + trunkHeight * 0.15;
-      ctx.globalAlpha = layer.opacity;
-      ctx.lineWidth = Math.max(0.5, 1 * scale);
-      for (const angle of [tree.branchAngle1, tree.branchAngle2]) {
-        const len = 20 * scale;
-        const kinkX = topX + Math.sin(angle) * len * 0.55;
-        const kinkY = branchOriginY - Math.cos(angle) * len * 0.5 + jitter * 0.3;
-        const endX = topX + Math.sin(angle) * len;
-        const endY = branchOriginY - Math.cos(angle) * len * 0.85;
-        ctx.beginPath();
-        ctx.moveTo(topX, branchOriginY);
-        ctx.lineTo(kinkX, kinkY);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-      }
 
-      // Foliage: short scribbled strokes clustered like pencil hatching,
-      // instead of filled blobs — reads as sketched rather than painted.
-      for (const stroke of tree.canopyDabs) {
-        ctx.globalAlpha = layer.opacity * stroke.alpha;
-        ctx.strokeStyle = rgbToCss(stroke.tone < 0.5 ? foliage[0] : foliage[1]);
-        ctx.lineWidth = Math.max(0.6, 1.3 * scale);
-        const cx = topX + stroke.dx * scale + sway * 0.6;
-        const cy = topY + stroke.dy * scale;
-        const hx = (Math.cos(stroke.angle) * stroke.length * scale) / 2;
-        const hy = (Math.sin(stroke.angle) * stroke.length * scale) / 2;
-        ctx.beginPath();
-        ctx.moveTo(cx - hx, cy - hy);
-        ctx.lineTo(cx + hx, cy + hy);
-        ctx.stroke();
+      if (this.rc) {
+        this._drawTreeRough(ctx, tree, layer, foliage, trunkColor, scale, {
+          px, py, topX, topY, midX, midY, branchOriginY, sway,
+        });
+      } else {
+        this._drawTreeFallback(ctx, tree, layer, foliage, trunkColor, scale, jitter, {
+          px, py, topX, topY, midX, midY, branchOriginY, sway,
+        });
       }
     }
     ctx.globalAlpha = 1;
+  }
+
+  /** Genuinely hand-sketched rendering via roughjs: wobbly linear paths for
+   * the trunk/branches and hachure-filled polygons for foliage clumps. */
+  _drawTreeRough(ctx, tree, layer, foliage, trunkColor, scale, pts) {
+    const { px, py, topX, topY, midX, midY, branchOriginY } = pts;
+    ctx.globalAlpha = layer.opacity;
+    const opts = {
+      stroke: trunkColor,
+      strokeWidth: Math.max(0.8, 2.2 * scale),
+      roughness: 2.2,
+      bowing: 1.5,
+      seed: tree.trunkSeed,
+    };
+    this.rc.linearPath(
+      [
+        [px, py],
+        [midX, midY],
+        [topX, topY],
+      ],
+      opts
+    );
+
+    const branchOpts = { ...opts, strokeWidth: Math.max(0.6, 1.1 * scale) };
+    [tree.branchAngle1, tree.branchAngle2].forEach((angle, i) => {
+      const len = 20 * scale;
+      const kinkX = topX + Math.sin(angle) * len * 0.55;
+      const kinkY = branchOriginY - Math.cos(angle) * len * 0.5;
+      const endX = topX + Math.sin(angle) * len;
+      const endY = branchOriginY - Math.cos(angle) * len * 0.85;
+      this.rc.linearPath(
+        [
+          [topX, branchOriginY],
+          [kinkX, kinkY],
+          [endX, endY],
+        ],
+        { ...branchOpts, seed: tree.branchSeeds[i] }
+      );
+    });
+
+    for (const clump of tree.canopyClumps) {
+      const cx = topX + clump.cx * scale + pts.sway * 0.6;
+      const cy = topY + clump.cy * scale;
+      const points = clump.points.map((p) => [cx + p.dx * scale, cy + p.dy * scale]);
+      this.rc.polygon(points, {
+        fill: rgbToCss(clump.tone < 0.5 ? foliage[0] : foliage[1]),
+        fillStyle: "hachure",
+        fillWeight: Math.max(0.6, 1 * scale),
+        hachureGap: Math.max(2.2, 4.5 * scale),
+        hachureAngle: clump.hachureAngle,
+        stroke: rgbToCss(clump.tone < 0.5 ? foliage[0] : foliage[1]),
+        strokeWidth: Math.max(0.6, 1 * scale),
+        roughness: 1.8,
+        seed: clump.seed,
+      });
+    }
+  }
+
+  /** Hand-rolled sketch look used if roughjs hasn't loaded (e.g. offline). */
+  _drawTreeFallback(ctx, tree, layer, foliage, trunkColor, scale, jitter, pts) {
+    const { px, py, topX, topY, midX, midY, branchOriginY, sway } = pts;
+    ctx.strokeStyle = trunkColor;
+
+    ctx.globalAlpha = layer.opacity;
+    ctx.lineWidth = Math.max(1, 2.6 * scale);
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(midX, midY);
+    ctx.lineTo(topX, topY);
+    ctx.stroke();
+
+    ctx.globalAlpha = layer.opacity * 0.4;
+    ctx.lineWidth = Math.max(0.6, 1.2 * scale);
+    ctx.beginPath();
+    ctx.moveTo(px + 1.5 * scale, py);
+    ctx.lineTo(midX - 1.5 * scale, midY - 1 * scale);
+    ctx.lineTo(topX + 1 * scale, topY);
+    ctx.stroke();
+
+    ctx.globalAlpha = layer.opacity;
+    ctx.lineWidth = Math.max(0.5, 1 * scale);
+    for (const angle of [tree.branchAngle1, tree.branchAngle2]) {
+      const len = 20 * scale;
+      const kinkX = topX + Math.sin(angle) * len * 0.55;
+      const kinkY = branchOriginY - Math.cos(angle) * len * 0.5 + jitter * 0.3;
+      const endX = topX + Math.sin(angle) * len;
+      const endY = branchOriginY - Math.cos(angle) * len * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(topX, branchOriginY);
+      ctx.lineTo(kinkX, kinkY);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+
+    for (const stroke of tree.canopyDabs) {
+      ctx.globalAlpha = layer.opacity * stroke.alpha;
+      ctx.strokeStyle = rgbToCss(stroke.tone < 0.5 ? foliage[0] : foliage[1]);
+      ctx.lineWidth = Math.max(0.6, 1.3 * scale);
+      const cx = topX + stroke.dx * scale + sway * 0.6;
+      const cy = topY + stroke.dy * scale;
+      const hx = (Math.cos(stroke.angle) * stroke.length * scale) / 2;
+      const hy = (Math.sin(stroke.angle) * stroke.length * scale) / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - hx, cy - hy);
+      ctx.lineTo(cx + hx, cy + hy);
+      ctx.stroke();
+    }
   }
 
   _drawPerson(ctx, w, h, mask) {
@@ -269,11 +351,15 @@ function generateTrees(w, h) {
       // Distant/back-layer trees get fewer, simpler clumps.
       const clumpCount = 2 + layerIndex + Math.floor(rand() * 2);
       const canopyDabs = [];
+      const canopyClumps = [];
       for (let c = 0; c < clumpCount; c++) {
         const clumpAngle = (rand() - 0.5) * 1.7;
         const clumpDist = 12 + rand() * 30;
         const cx = Math.sin(clumpAngle) * clumpDist;
         const cy = -8 - rand() * 30 - clumpDist * 0.3;
+        const tone = rand();
+
+        // Fallback-only: scribbled hatch strokes around the clump center.
         const strokesInClump = 4 + Math.floor(rand() * 5);
         for (let d = 0; d < strokesInClump; d++) {
           canopyDabs.push({
@@ -281,10 +367,29 @@ function generateTrees(w, h) {
             dy: cy + (rand() - 0.5) * 12,
             angle: rand() * Math.PI * 2,
             length: 5 + rand() * 7,
-            tone: rand(),
+            tone,
             alpha: 0.5 + rand() * 0.4,
           });
         }
+
+        // roughjs-only: an irregular rounded polygon outline roughjs fills
+        // with a genuine hachure sketch texture.
+        const baseR = 9 + rand() * 6;
+        const vertexCount = 7 + Math.floor(rand() * 3);
+        const points = [];
+        for (let v = 0; v < vertexCount; v++) {
+          const angle = (v / vertexCount) * Math.PI * 2 + (rand() - 0.5) * 0.3;
+          const r = baseR * (0.7 + rand() * 0.6);
+          points.push({ dx: Math.cos(angle) * r, dy: Math.sin(angle) * r * 0.85 });
+        }
+        canopyClumps.push({
+          cx,
+          cy,
+          points,
+          tone,
+          seed: 1 + Math.floor(rand() * 99999),
+          hachureAngle: -60 + rand() * 60,
+        });
       }
 
       trees.push({
@@ -295,9 +400,12 @@ function generateTrees(w, h) {
         layerIndex,
         trunkBend: (rand() - 0.5) * 10,
         trunkJitter: (rand() - 0.5) * 14,
+        trunkSeed: 1 + Math.floor(rand() * 99999),
         branchAngle1: 0.35 + rand() * 0.3,
         branchAngle2: -(0.35 + rand() * 0.3),
+        branchSeeds: [1 + Math.floor(rand() * 99999), 1 + Math.floor(rand() * 99999)],
         canopyDabs,
+        canopyClumps,
       });
     }
   });
