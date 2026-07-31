@@ -8,8 +8,8 @@ const THREE_VERSION = "0.160.0";
 const THREE_URL = `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/build/three.module.js`;
 const ADDON_BASE = `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/examples/jsm`;
 
-const TREE_COUNT = 46;
-const FLOWER_COUNT = 90;
+const TREE_COUNT = 30;
+const FLOWER_COUNT = 44;
 const FOREST_RADIUS = 60;
 const CLEARING_RADIUS = 6;
 
@@ -125,29 +125,76 @@ export class Forest3D {
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
       const height = 3 + rand() * 5;
+      const lean = (rand() - 0.5) * 0.12;
 
-      const trunkGeo = new THREE.CylinderGeometry(0.12, 0.22, height, 6);
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-      trunk.position.set(x, height / 2, z);
-      this.scene.add(trunk);
+      // Trunk: tapered, and slightly bent (two segments) rather than a
+      // perfectly straight cylinder — a straight pole is a big part of why
+      // this read as "a stick."
+      const trunkGroup = new THREE.Group();
+      const lowerGeo = new THREE.CylinderGeometry(0.16, 0.24, height * 0.6, 6);
+      const lower = new THREE.Mesh(lowerGeo, trunkMat);
+      lower.position.y = (height * 0.6) / 2;
+      lower.rotation.z = lean * 0.4;
+      trunkGroup.add(lower);
 
-      const canopyGeo = new THREE.IcosahedronGeometry(0.9 + rand() * 1.1, 0);
+      const upperGeo = new THREE.CylinderGeometry(0.08, 0.17, height * 0.42, 6);
+      const upper = new THREE.Mesh(upperGeo, trunkMat);
+      upper.position.set(Math.sin(lean) * height * 0.3, height * 0.6 + (height * 0.42) / 2, 0);
+      upper.rotation.z = lean;
+      trunkGroup.add(upper);
+
+      // A couple of short branches forking off partway up, breaking up the
+      // single-pole silhouette further.
+      for (const branchSide of [-1, 1]) {
+        const branchGeo = new THREE.CylinderGeometry(0.03, 0.07, height * 0.28, 5);
+        const branch = new THREE.Mesh(branchGeo, trunkMat);
+        branch.position.set(
+          Math.sin(lean) * height * 0.55 + branchSide * 0.15,
+          height * 0.72,
+          branchSide * 0.1
+        );
+        branch.rotation.z = branchSide * (0.7 + rand() * 0.3);
+        trunkGroup.add(branch);
+      }
+
+      trunkGroup.position.set(x, 0, z);
+      this.scene.add(trunkGroup);
+
+      const canopyAnchorX = x + Math.sin(lean) * height * 0.75;
+      const canopyBaseY = height + 0.3;
+
+      // Canopy as a small cluster of offset, non-uniformly-scaled blobs
+      // instead of one perfect sphere — reads as a mass of foliage rather
+      // than a ball. All blobs share one material so per-frame color
+      // updates stay cheap regardless of cluster size.
       const canopyMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffffff,
         emissiveIntensity: 0.6,
-        roughness: 0.5,
+        roughness: 0.6,
+        flatShading: true,
       });
-      const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-      canopy.position.set(x, height + 0.4, z);
-      this.scene.add(canopy);
+      const canopyGroup = new THREE.Group();
+      const clumpCount = 3 + Math.floor(rand() * 2);
+      for (let c = 0; c < clumpCount; c++) {
+        const blobGeo = new THREE.IcosahedronGeometry(0.55 + rand() * 0.55, 0);
+        const blob = new THREE.Mesh(blobGeo, canopyMat);
+        const a = rand() * Math.PI * 2;
+        const d = rand() * 0.85;
+        blob.position.set(Math.cos(a) * d, (rand() - 0.35) * 0.7, Math.sin(a) * d);
+        blob.scale.set(0.85 + rand() * 0.4, 0.6 + rand() * 0.35, 0.85 + rand() * 0.4);
+        blob.rotation.y = rand() * Math.PI;
+        canopyGroup.add(blob);
+      }
+      canopyGroup.position.set(canopyAnchorX, canopyBaseY, z);
+      this.scene.add(canopyGroup);
 
       this.trees.push({
-        canopy,
+        canopyGroup,
         canopyMat,
         hueOffset: rand() * 360,
         swaySeed: rand() * Math.PI * 2,
-        baseY: height + 0.4,
+        baseY: canopyBaseY,
       });
     }
   }
@@ -155,33 +202,51 @@ export class Forest3D {
   _buildFlowers(THREE) {
     const rand = mulberry32(777);
     this.flowers = [];
-    const geo = new THREE.OctahedronGeometry(0.28, 0);
 
     for (let i = 0; i < FLOWER_COUNT; i++) {
       const angle = rand() * Math.PI * 2;
       const radius = 1.5 + rand() * (FOREST_RADIUS - 2);
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const baseY = 0.35 + rand() * 0.3;
+      const baseY = 0.3 + rand() * 0.25;
 
       const mat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffffff,
         emissiveIntensity: 1.1,
-        roughness: 0.3,
+        roughness: 0.35,
+        side: THREE.DoubleSide,
       });
-      const flower = new THREE.Mesh(geo, mat);
-      flower.position.set(x, baseY, z);
-      this.scene.add(flower);
+
+      // A center bud plus a fan of petals around it, instead of a single
+      // floating gem — reads as a flower rather than an orb.
+      const flowerGroup = new THREE.Group();
+      const centerGeo = new THREE.OctahedronGeometry(0.09 + rand() * 0.03, 0);
+      flowerGroup.add(new THREE.Mesh(centerGeo, mat));
+
+      const petalCount = 4 + Math.floor(rand() * 3);
+      const petalGeo = new THREE.ConeGeometry(0.09 + rand() * 0.04, 0.32 + rand() * 0.18, 4);
+      for (let p = 0; p < petalCount; p++) {
+        const petal = new THREE.Mesh(petalGeo, mat);
+        const petalAngle = (p / petalCount) * Math.PI * 2;
+        const r = 0.16;
+        petal.position.set(Math.cos(petalAngle) * r, 0.04, Math.sin(petalAngle) * r);
+        petal.rotation.y = -petalAngle;
+        petal.rotation.z = -Math.PI / 2 + 0.35;
+        flowerGroup.add(petal);
+      }
+
+      flowerGroup.position.set(x, baseY, z);
+      this.scene.add(flowerGroup);
 
       this.flowers.push({
-        flower,
+        flowerGroup,
         mat,
         hueOffset: rand() * 360,
         phase: rand() * Math.PI * 2,
         freq: 0.6 + rand() * 1.2,
         baseY,
-        baseScale: 0.7 + rand() * 0.9,
+        baseScale: 0.85 + rand() * 0.7,
       });
     }
   }
@@ -235,8 +300,8 @@ export class Forest3D {
       tree.canopyMat.emissive.setHSL(hue / 360, state.saturation, 0.35 + state.energy * 0.25);
       tree.canopyMat.emissiveIntensity = 0.5 + state.energy * 0.6 + gust * 0.8;
       const sway = Math.sin(this.time * 0.8 + tree.swaySeed) * (0.05 + gust * 0.3);
-      tree.canopy.position.y = tree.baseY + Math.sin(this.time * 0.5 + tree.swaySeed) * 0.15;
-      tree.canopy.rotation.z = sway;
+      tree.canopyGroup.position.y = tree.baseY + Math.sin(this.time * 0.5 + tree.swaySeed) * 0.15;
+      tree.canopyGroup.rotation.z = sway;
     }
 
     for (const f of this.flowers) {
@@ -246,9 +311,9 @@ export class Forest3D {
       f.mat.emissiveIntensity = (0.8 + state.energy * 1.2 + blink * 2) * state.density;
       const pulse = Math.sin(this.time * f.freq + f.phase) * 0.5 + 0.5;
       const scale = f.baseScale * (0.6 + pulse * 0.6 + gust * 0.5) * (0.5 + state.density * 0.7);
-      f.flower.scale.setScalar(scale);
-      f.flower.position.y = f.baseY + pulse * 0.2;
-      f.flower.rotation.y = this.time * (0.3 + f.freq * 0.2);
+      f.flowerGroup.scale.setScalar(scale);
+      f.flowerGroup.position.y = f.baseY + pulse * 0.2;
+      f.flowerGroup.rotation.y = this.time * (0.3 + f.freq * 0.2);
     }
 
     if (this.bloomPass) {
