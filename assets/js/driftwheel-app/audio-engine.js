@@ -1,9 +1,9 @@
+import * as Tone from 'tone';
 import { buildChordFrequencies, CHORD_TYPES, TONES } from './theory.js';
 
 const PAD_ATTACK = 2.4;
 const PAD_RELEASE = 2.0;
 const NOISE_BUFFER_SECONDS = 2;
-const REVERB_SECONDS = 3.2;
 
 // Sustained chord tone. Wraps either oscillator(s) (for the tonal timbres and
 // the two-oscillator "glass" blend) or a filtered noise loop (for "Noise
@@ -137,18 +137,6 @@ function pluckVoice(ctx, destination, frequency, toneType, noiseBuffer, duration
   }, delayUntilCleanup * 1000);
 }
 
-function buildImpulseResponse(ctx) {
-  const length = Math.floor(ctx.sampleRate * REVERB_SECONDS);
-  const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
-  for (let channel = 0; channel < 2; channel++) {
-    const data = impulse.getChannelData(channel);
-    for (let i = 0; i < length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
-    }
-  }
-  return impulse;
-}
-
 function buildNoiseBuffer(ctx) {
   const length = Math.floor(ctx.sampleRate * NOISE_BUFFER_SECONDS);
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
@@ -178,7 +166,11 @@ export class AudioEngine {
 
   init() {
     if (this.ctx) return;
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Tone.js owns the single shared AudioContext; grab its raw native
+    // context so our hand-rolled oscillator/noise voices live on the same
+    // context as the Tone.js effect nodes below (required for native <-> Tone
+    // nodes to be able to connect to one another at all).
+    const ctx = Tone.getContext().rawContext;
     this.ctx = ctx;
 
     this.masterGain = ctx.createGain();
@@ -191,24 +183,24 @@ export class AudioEngine {
 
     this.panner = ctx.createStereoPanner();
 
-    this.convolver = ctx.createConvolver();
-    this.convolver.buffer = buildImpulseResponse(ctx);
-    this.wetGain = ctx.createGain();
-    this.wetGain.gain.value = 0.32;
-    this.dryGain = ctx.createGain();
-    this.dryGain.gain.value = 0.85;
-
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 256;
     this._levelData = new Uint8Array(this.analyser.frequencyBinCount);
 
-    // voices -> filter -> panner -> split to dry + reverb send -> master -> out
+    // Tone.js effects chain: stereo chorus thickens the pad, a tempo-linked
+    // ping-pong delay adds rhythmic space (especially under the arp), and a
+    // long convolution reverb washes everything together. Each effect mixes
+    // its own wet/dry internally, so chaining them in series layers cleanly.
+    this.chorus = new Tone.Chorus({ frequency: 0.3, delayTime: 3.5, depth: 0.55, wet: 0.35 }).start();
+    this.delay = new Tone.PingPongDelay({ delayTime: 0.5, feedback: 0.32, wet: 0.22 });
+    this.reverb = new Tone.Reverb({ decay: 7, preDelay: 0.02, wet: 0.4 });
+
+    // voices -> filter -> panner -> chorus -> delay -> reverb -> master -> out
     this.filter.connect(this.panner);
-    this.panner.connect(this.dryGain);
-    this.panner.connect(this.convolver);
-    this.convolver.connect(this.wetGain);
-    this.dryGain.connect(this.masterGain);
-    this.wetGain.connect(this.masterGain);
+    Tone.connect(this.panner, this.chorus);
+    this.chorus.connect(this.delay);
+    this.delay.connect(this.reverb);
+    Tone.connect(this.reverb, this.masterGain);
     this.masterGain.connect(this.analyser);
     this.analyser.connect(ctx.destination);
 
@@ -234,7 +226,8 @@ export class AudioEngine {
   }
 
   async resume() {
-    if (this.ctx && this.ctx.state === 'suspended') await this.ctx.resume();
+    await Tone.start();
+    if (this.reverb) await this.reverb.ready;
   }
 
   getLevel() {
@@ -297,6 +290,9 @@ export class AudioEngine {
 
   setTempo(bpm) {
     this.arp.tempo = bpm;
+    // Keep the ping-pong delay in the same rhythmic pocket as the arp: a
+    // dotted-eighth echo relative to the current tempo.
+    if (this.delay) this.delay.delayTime.value = (60 / bpm) * 0.75;
   }
 
   _startArpScheduler() {
