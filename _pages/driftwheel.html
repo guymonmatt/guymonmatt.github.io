@@ -1,0 +1,83 @@
+---
+layout: biome
+title: "Driftwheel"
+permalink: /driftwheel/
+excerpt: "An ambient synth pad you play by spinning wheels for chord, chord type, and tone."
+sitemap: true
+---
+
+<div id="driftwheel-app" class="driftwheel-app">
+
+  <canvas id="driftwheel-canvas" class="driftwheel-canvas"></canvas>
+
+  <div id="driftwheel-hud" class="driftwheel-hud">
+    <a href="{{ site.baseurl }}/" class="driftwheel-back" aria-label="Back to site">&larr;</a>
+    <div class="driftwheel-label">Driftwheel</div>
+    <button id="driftwheel-play" class="driftwheel-play">Play</button>
+  </div>
+
+  <div id="driftwheel-intro" class="driftwheel-overlay">
+    <div class="driftwheel-card">
+      <h1>Driftwheel</h1>
+      <p>
+        A slow-moving ambient synth pad. Spin the wheels to change the root
+        note, the chord type, and the synth tone &mdash; flip on the arp to
+        have it pick out the notes of whatever chord you're holding.
+      </p>
+      <button id="driftwheel-start" class="driftwheel-button">Start drifting</button>
+      <p class="driftwheel-fineprint">Turn your volume up. Works best with headphones.</p>
+    </div>
+  </div>
+
+  <div id="driftwheel-panel" class="driftwheel-panel">
+    <div id="driftwheel-chord-label" class="driftwheel-chord-label">&nbsp;</div>
+
+    <div class="driftwheel-wheels">
+      <div class="driftwheel-wheel-group">
+        <div class="driftwheel-wheel-caption">Root</div>
+        <div id="driftwheel-wheel-root"></div>
+      </div>
+      <div class="driftwheel-wheel-group">
+        <div class="driftwheel-wheel-caption">Chord</div>
+        <div id="driftwheel-wheel-type"></div>
+      </div>
+      <div class="driftwheel-wheel-group">
+        <div class="driftwheel-wheel-caption">Tone</div>
+        <div id="driftwheel-wheel-tone"></div>
+      </div>
+    </div>
+
+    <div class="driftwheel-arp-row">
+      <div class="driftwheel-switch-group">
+        <div class="driftwheel-wheel-caption">Arp</div>
+        <label class="driftwheel-switch">
+          <input type="checkbox" id="driftwheel-arp-toggle">
+          <span class="driftwheel-switch-track"></span>
+        </label>
+      </div>
+      <div class="driftwheel-wheel-group driftwheel-arp-small">
+        <div class="driftwheel-wheel-caption">Pattern</div>
+        <div id="driftwheel-wheel-arp-pattern"></div>
+      </div>
+      <div class="driftwheel-wheel-group driftwheel-arp-small">
+        <div class="driftwheel-wheel-caption">Rate</div>
+        <div id="driftwheel-wheel-arp-rate"></div>
+      </div>
+    </div>
+
+    <div class="driftwheel-sliders">
+      <div class="driftwheel-slider-group">
+        <div class="driftwheel-slider-caption">Tempo <span id="driftwheel-tempo-value">76</span> bpm</div>
+        <input type="range" id="driftwheel-tempo" min="50" max="130" value="76">
+      </div>
+      <div class="driftwheel-slider-group">
+        <div class="driftwheel-slider-caption">Volume</div>
+        <input type="range" id="driftwheel-volume" min="0" max="100" value="60">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<link rel="stylesheet" href="{{ site.baseurl }}/assets/css/driftwheel.css">
+<script type="module" src="{{ site.baseurl }}/assets/js/driftwheel-app/main.js"></script>

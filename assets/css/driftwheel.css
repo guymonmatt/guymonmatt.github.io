@@ -1,0 +1,335 @@
+.driftwheel-app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #060a10;
+}
+
+.driftwheel-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.driftwheel-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 14px 0 14px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.driftwheel-hud > * {
+  pointer-events: auto;
+}
+
+.driftwheel-back {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(6, 10, 16, 0.55);
+  color: #eef3f7;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+}
+
+.driftwheel-label {
+  position: absolute;
+  left: 50%;
+  top: max(12px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(6, 10, 16, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+
+/* Intro / overlay cards, shared look with the other camera-free overlays. */
+.driftwheel-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 30%, rgba(30, 40, 60, 0.92), rgba(4, 6, 10, 0.97));
+}
+
+.driftwheel-overlay[hidden] {
+  display: none;
+}
+
+.driftwheel-card {
+  max-width: 380px;
+  text-align: center;
+  color: #eef3f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.driftwheel-card h1 {
+  font-size: 22px;
+  margin: 0 0 12px 0;
+}
+
+.driftwheel-card p {
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.9;
+  margin: 0 0 20px 0;
+}
+
+.driftwheel-fineprint {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 14px;
+}
+
+.driftwheel-button {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #7ea8ff;
+  color: #060a10;
+  cursor: pointer;
+}
+
+.driftwheel-button:active {
+  transform: scale(0.97);
+}
+
+/* Main control panel, shown once the pad has started. */
+.driftwheel-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+  color: #eef3f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(to top, rgba(6, 10, 16, 0.92), rgba(6, 10, 16, 0.55) 70%, transparent);
+}
+
+.driftwheel-app.is-active .driftwheel-panel {
+  display: flex;
+}
+
+.driftwheel-chord-label {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
+}
+
+.driftwheel-wheels {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+}
+
+.driftwheel-wheel-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.driftwheel-wheel-caption {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* The wheel picker itself: a snap-scrolling column with a fixed-height
+   viewport, fading items above/below the centered (selected) one. */
+.wheel {
+  position: relative;
+  width: 100%;
+  height: 108px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+}
+
+.wheel::-webkit-scrollbar {
+  display: none;
+}
+
+.wheel:focus-visible {
+  outline: 2px solid #7ea8ff;
+  outline-offset: 2px;
+}
+
+.wheel-track {
+  display: flex;
+  flex-direction: column;
+}
+
+.wheel-item {
+  scroll-snap-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.4;
+  transform: scale(0.85);
+  transition: opacity 0.05s linear;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.wheel-item.is-selected {
+  font-weight: 700;
+}
+
+.driftwheel-arp-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.driftwheel-arp-small {
+  width: 90px;
+}
+
+.driftwheel-arp-small .wheel {
+  height: 72px;
+}
+
+.driftwheel-switch-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.driftwheel-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+}
+
+.driftwheel-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.driftwheel-switch-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.driftwheel-switch-track::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  top: 3px;
+  background: #eef3f7;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.driftwheel-switch input:checked + .driftwheel-switch-track {
+  background: #7ea8ff;
+}
+
+.driftwheel-switch input:checked + .driftwheel-switch-track::before {
+  transform: translateX(18px);
+}
+
+.driftwheel-sliders {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  max-width: 420px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.driftwheel-slider-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 130px;
+}
+
+.driftwheel-slider-caption {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.driftwheel-slider-group input[type="range"] {
+  width: 130px;
+  accent-color: #7ea8ff;
+}
+
+.driftwheel-play {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 26px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eef3f7;
+  cursor: pointer;
+}
+
+.driftwheel-play.is-playing {
+  background: #7ea8ff;
+  color: #060a10;
+}

@@ -31,3 +31,8 @@ A 3D Three.js forest of glowing, color-cycling flowers whose palette is seeded f
 [Enter the forest](/psyforest/){: .btn .btn--primary}
 
 
+### Driftwheel
+An ambient synth pad you play by spinning wheel-style selectors for the root note, chord type, and synth tone, with an arpeggiator that picks out the notes of whatever chord you're holding.  
+[Start drifting](/driftwheel/){: .btn .btn--primary}
+
+
