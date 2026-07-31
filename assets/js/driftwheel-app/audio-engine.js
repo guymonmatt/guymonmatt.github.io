@@ -188,19 +188,19 @@ export class AudioEngine {
     this._levelData = new Uint8Array(this.analyser.frequencyBinCount);
 
     // Tone.js effects chain: stereo chorus thickens the pad, a tempo-linked
-    // ping-pong delay adds rhythmic space (especially under the arp), and a
-    // long convolution reverb washes everything together. Each effect mixes
-    // its own wet/dry internally, so chaining them in series layers cleanly.
+    // ping-pong delay adds rhythmic space (especially under the arp). Each
+    // effect mixes its own wet/dry internally, so chaining them in series
+    // layers cleanly. Reverb is added separately in _addReverb(), once the
+    // context is confirmed running — see the comment there for why.
     this.chorus = new Tone.Chorus({ frequency: 0.3, delayTime: 3.5, depth: 0.55, wet: 0.35 }).start();
     this.delay = new Tone.PingPongDelay({ delayTime: 0.5, feedback: 0.32, wet: 0.22 });
-    this.reverb = new Tone.Reverb({ decay: 7, preDelay: 0.02, wet: 0.4 });
 
-    // voices -> filter -> panner -> chorus -> delay -> reverb -> master -> out
+    // voices -> filter -> panner -> chorus -> delay -> master -> out
+    // (reverb gets spliced in between delay and masterGain once it's ready)
     this.filter.connect(this.panner);
     Tone.connect(this.panner, this.chorus);
     this.chorus.connect(this.delay);
-    this.delay.connect(this.reverb);
-    Tone.connect(this.reverb, this.masterGain);
+    Tone.connect(this.delay, this.masterGain);
     this.masterGain.connect(this.analyser);
     this.analyser.connect(ctx.destination);
 
@@ -227,11 +227,24 @@ export class AudioEngine {
 
   async resume() {
     await Tone.start();
-    // Don't block on this: Tone.Reverb renders its impulse response via an
-    // OfflineAudioContext, which is unreliable on some mobile browsers (it
-    // can take a while, or in rare cases never resolve). The pad is audible
-    // without it; the reverb wash just fades in once it's ready.
-    if (this.reverb) this.reverb.ready.catch((err) => console.error('Driftwheel reverb failed to generate:', err));
+    this._addReverb();
+  }
+
+  // Tone.Reverb starts rendering its impulse response (via an
+  // OfflineAudioContext) the moment it's constructed. Constructing it before
+  // the main AudioContext has been unlocked by the user gesture is a known
+  // source of that render hanging indefinitely on some mobile browsers, so
+  // it's built here — after Tone.start() has resolved — rather than in
+  // init(), and spliced into the chain between the delay and the master bus.
+  _addReverb() {
+    if (this.reverb) return;
+    this.reverb = new Tone.Reverb({ decay: 7, preDelay: 0.02, wet: 0.4 });
+    Tone.disconnect(this.delay, this.masterGain);
+    this.delay.connect(this.reverb);
+    Tone.connect(this.reverb, this.masterGain);
+    this.reverb.ready
+      .then(() => console.log('Driftwheel: reverb ready'))
+      .catch((err) => console.error('Driftwheel: reverb failed to generate', err));
   }
 
   getLevel() {
