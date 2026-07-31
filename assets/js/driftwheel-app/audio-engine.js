@@ -1,4 +1,4 @@
-import * as Tone from 'tone';
+import * as Tone from '../vendor/tone.esm.js';
 import { buildChordFrequencies, CHORD_TYPES, TONES } from './theory.js';
 
 const PAD_ATTACK = 2.4;
