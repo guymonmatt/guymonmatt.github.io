@@ -111,12 +111,18 @@ els.playToggle.addEventListener('click', () => {
 });
 
 async function start() {
-  engine.init();
-  await engine.resume();
-  engine.setVolume(Number(els.volume.value) / 100);
-  engine.setTempo(Number(els.tempo.value));
-  engine.setArpRate(ARP_RATES[arpRateWheel.index].div);
-  engine.setArpPattern(ARP_PATTERNS[arpPatternWheel.index]);
+  try {
+    engine.init();
+    await engine.resume();
+    engine.setVolume(Number(els.volume.value) / 100);
+    engine.setTempo(Number(els.tempo.value));
+    engine.setArpRate(ARP_RATES[arpRateWheel.index].div);
+    engine.setArpPattern(ARP_PATTERNS[arpPatternWheel.index]);
+  } catch (err) {
+    // Whatever went wrong with the audio graph, don't leave the intro card
+    // stuck forever — show the panel so the wheels/back button still work.
+    console.error('Driftwheel failed to start audio:', err);
+  }
 
   els.intro.hidden = true;
   els.app.classList.add('is-active');

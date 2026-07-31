@@ -227,7 +227,11 @@ export class AudioEngine {
 
   async resume() {
     await Tone.start();
-    if (this.reverb) await this.reverb.ready;
+    // Don't block on this: Tone.Reverb renders its impulse response via an
+    // OfflineAudioContext, which is unreliable on some mobile browsers (it
+    // can take a while, or in rare cases never resolve). The pad is audible
+    // without it; the reverb wash just fades in once it's ready.
+    if (this.reverb) this.reverb.ready.catch((err) => console.error('Driftwheel reverb failed to generate:', err));
   }
 
   getLevel() {
