@@ -138,10 +138,11 @@ function pluckVoice(ctx, destination, frequency, toneType, noiseBuffer, duration
 }
 
 // A short, soft bell-like ping used for the "twinkle" ambience layer: a
-// fundamental plus a quiet, slightly inharmonic upper partial (bells and
-// chimes aren't perfectly harmonic, which is what makes them shimmer),
-// with a fast attack and a slow, randomized decay so they never repeat
-// identically. Frequency is chosen by the caller from the current chord,
+// fundamental plus a quiet upper partial a twelfth above (the 3rd harmonic
+// — an octave plus a fifth), which is always consonant with the fundamental
+// regardless of key, so the shimmer never clashes with the current chord.
+// Fast attack, slow randomized decay so no two twinkles sound identical.
+// Frequency is chosen by the caller from the current chord's own tones,
 // transposed up into a high, glassy register.
 function twinkleVoice(ctx, destination, frequency, when) {
   const attack = 0.008;
@@ -164,7 +165,7 @@ function twinkleVoice(ctx, destination, frequency, when) {
 
   const partial = ctx.createOscillator();
   partial.type = 'sine';
-  partial.frequency.value = frequency * 2.76; // inharmonic, bell-like
+  partial.frequency.value = frequency * 3; // a twelfth up: always in tune with the fundamental
   const partialGain = ctx.createGain();
   partialGain.gain.value = 0.2;
   partial.connect(partialGain).connect(gain);
