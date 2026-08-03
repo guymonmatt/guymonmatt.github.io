@@ -137,6 +137,74 @@ function pluckVoice(ctx, destination, frequency, toneType, noiseBuffer, duration
   }, delayUntilCleanup * 1000);
 }
 
+// A short, soft bell-like ping used for the "twinkle" ambience layer: a
+// fundamental plus a quiet, slightly inharmonic upper partial (bells and
+// chimes aren't perfectly harmonic, which is what makes them shimmer),
+// with a fast attack and a slow, randomized decay so they never repeat
+// identically. Frequency is chosen by the caller from the current chord,
+// transposed up into a high, glassy register.
+function twinkleVoice(ctx, destination, frequency, when) {
+  const attack = 0.008;
+  const decay = 1.6 + Math.random() * 1.4;
+  const peak = 0.09 + Math.random() * 0.06;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(peak, when + attack);
+  gain.gain.exponentialRampToValueAtTime(0.001, when + attack + decay);
+
+  const pan = ctx.createStereoPanner();
+  pan.pan.value = (Math.random() * 2 - 1) * 0.7;
+  gain.connect(pan).connect(destination);
+
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = frequency;
+  osc.connect(gain);
+
+  const partial = ctx.createOscillator();
+  partial.type = 'sine';
+  partial.frequency.value = frequency * 2.76; // inharmonic, bell-like
+  const partialGain = ctx.createGain();
+  partialGain.gain.value = 0.2;
+  partial.connect(partialGain).connect(gain);
+
+  const stopAt = when + attack + decay + 0.1;
+  osc.start(when);
+  partial.start(when);
+  osc.stop(stopAt);
+  partial.stop(stopAt);
+
+  const cleanupDelay = Math.max(0, when - ctx.currentTime) + attack + decay + 0.2;
+  setTimeout(() => {
+    osc.disconnect();
+    partial.disconnect();
+    partialGain.disconnect();
+    gain.disconnect();
+    pan.disconnect();
+  }, cleanupDelay * 1000);
+}
+
+// Brown-ish noise (a leaky integral of white noise, normalized): weighted
+// toward low frequencies, a much more organic base for a wind texture than
+// flat white noise. Looped and shaped further with filters in the engine.
+function buildWindBuffer(ctx) {
+  const length = Math.floor(ctx.sampleRate * 6);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let last = 0;
+  let peak = 0;
+  for (let i = 0; i < length; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    data[i] = last;
+    peak = Math.max(peak, Math.abs(last));
+  }
+  const norm = peak > 0 ? 0.9 / peak : 1;
+  for (let i = 0; i < length; i++) data[i] *= norm;
+  return buffer;
+}
+
 function buildImpulseResponse(ctx) {
   const length = Math.floor(ctx.sampleRate * REVERB_SECONDS);
   const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
@@ -187,6 +255,10 @@ export class AudioEngine {
       nextStepTime: 0,
       onStepChange: null,
     };
+
+    // Ambience layers: generative wind + twinkle, independent of the pad.
+    this.twinkle = { enabled: false, timerId: null, nextTime: 0 };
+    this.windEnabled = false;
   }
 
   init() {
@@ -244,6 +316,45 @@ export class AudioEngine {
     this._panLfo.connect(this._panLfoGain);
     this._panLfoGain.connect(this.panner.pan);
     this._panLfo.start();
+
+    // Wind: looping filtered brown noise, always running under the hood at
+    // zero gain until enabled, with its own slow filter-sweep, gust, and
+    // pan LFOs so it drifts independently of the pad.
+    this.windFilter = ctx.createBiquadFilter();
+    this.windFilter.type = 'bandpass';
+    this.windFilter.frequency.value = 700;
+    this.windFilter.Q.value = 0.7;
+    this.windGain = ctx.createGain();
+    this.windGain.gain.value = 0;
+    this.windPan = ctx.createStereoPanner();
+    this.windFilter.connect(this.windGain).connect(this.windPan).connect(this.voiceBus);
+
+    this.windSource = ctx.createBufferSource();
+    this.windSource.buffer = buildWindBuffer(ctx);
+    this.windSource.loop = true;
+    this.windSource.connect(this.windFilter);
+    this.windSource.start();
+
+    this._windFilterLfo = ctx.createOscillator();
+    this._windFilterLfo.frequency.value = 0.04;
+    this._windFilterLfoGain = ctx.createGain();
+    this._windFilterLfoGain.gain.value = 350;
+    this._windFilterLfo.connect(this._windFilterLfoGain).connect(this.windFilter.frequency);
+    this._windFilterLfo.start();
+
+    this._windGustLfo = ctx.createOscillator();
+    this._windGustLfo.frequency.value = 0.07;
+    this._windGustLfoGain = ctx.createGain();
+    this._windGustLfoGain.gain.value = 0; // ramped up in setWindEnabled()
+    this._windGustLfo.connect(this._windGustLfoGain).connect(this.windGain.gain);
+    this._windGustLfo.start();
+
+    this._windPanLfo = ctx.createOscillator();
+    this._windPanLfo.frequency.value = 0.025;
+    this._windPanLfoGain = ctx.createGain();
+    this._windPanLfoGain.gain.value = 0.5;
+    this._windPanLfo.connect(this._windPanLfoGain).connect(this.windPan.pan);
+    this._windPanLfo.start();
   }
 
   async resume() {
@@ -411,9 +522,58 @@ export class AudioEngine {
     if (this.seq.onStepChange) this.seq.onStepChange(this.seq.stepIndex);
   }
 
+  setWindEnabled(enabled) {
+    this.windEnabled = enabled;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const target = enabled ? 0.12 : 0;
+    const gustTarget = enabled ? 0.04 : 0;
+    this.windGain.gain.cancelScheduledValues(now);
+    this.windGain.gain.setValueAtTime(this.windGain.gain.value, now);
+    this.windGain.gain.linearRampToValueAtTime(target, now + 2.5);
+    this._windGustLfoGain.gain.cancelScheduledValues(now);
+    this._windGustLfoGain.gain.setValueAtTime(this._windGustLfoGain.gain.value, now);
+    this._windGustLfoGain.gain.linearRampToValueAtTime(gustTarget, now + 2.5);
+  }
+
+  setTwinkleEnabled(enabled) {
+    this.twinkle.enabled = enabled;
+    if (enabled) this._startTwinkle();
+    else this._stopTwinkle();
+  }
+
+  _startTwinkle() {
+    if (this.twinkle.timerId || !this.ctx) return;
+    this.twinkle.nextTime = this.ctx.currentTime + 0.6;
+    this.twinkle.timerId = setInterval(() => this._scheduleTwinkle(), 150);
+  }
+
+  _stopTwinkle() {
+    if (this.twinkle.timerId) {
+      clearInterval(this.twinkle.timerId);
+      this.twinkle.timerId = null;
+    }
+  }
+
+  _scheduleTwinkle() {
+    const lookahead = 0.6;
+    while (this.twinkle.nextTime < this.ctx.currentTime + lookahead) {
+      const frequencies = this.currentFrequencies;
+      if (frequencies.length) {
+        const base = frequencies[Math.floor(Math.random() * frequencies.length)];
+        const octaveMul = [2, 4, 4, 8][Math.floor(Math.random() * 4)]; // mostly 1-2 octaves up
+        twinkleVoice(this.ctx, this.voiceBus, base * octaveMul, this.twinkle.nextTime);
+      }
+      // Sparse, irregular gaps rather than a fixed rhythm.
+      this.twinkle.nextTime += 0.8 + Math.random() * 2.4;
+    }
+  }
+
   stopAll() {
     this._stopArpScheduler();
     this._stopSequencer();
+    this.setWindEnabled(false);
+    this._stopTwinkle();
     this.padVoices.forEach((voice) => voice.fadeOutAndStop());
     this.padVoices = [];
   }
