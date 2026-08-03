@@ -1,8 +1,10 @@
-import { NOTE_NAMES, CHORD_TYPES, TONES, TWINKLE_TONES, ARP_PATTERNS, ARP_RATES } from './theory.js';
-import { Wheel } from './wheel.js';
-import { AudioEngine } from './audio-engine.js';
-import { Sequencer } from './sequencer.js';
-import { TouchPad } from './touchpad.js';
+---
+---
+import { NOTE_NAMES, CHORD_TYPES, TONES, TWINKLE_TONES, ARP_PATTERNS, ARP_RATES } from './theory.js?v={{ site.time | date: '%s' }}';
+import { Wheel } from './wheel.js?v={{ site.time | date: '%s' }}';
+import { AudioEngine } from './audio-engine.js?v={{ site.time | date: '%s' }}';
+import { Sequencer } from './sequencer.js?v={{ site.time | date: '%s' }}';
+import { TouchPad } from './touchpad.js?v={{ site.time | date: '%s' }}';
 
 const engine = new AudioEngine();
 
