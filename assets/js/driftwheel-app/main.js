@@ -19,6 +19,8 @@ const els = {
   seqToggle: document.getElementById('driftwheel-seq-toggle'),
   seqClear: document.getElementById('driftwheel-seq-clear'),
   seqGrid: document.getElementById('driftwheel-seq-grid'),
+  windToggle: document.getElementById('driftwheel-wind-toggle'),
+  twinkleToggle: document.getElementById('driftwheel-twinkle-toggle'),
 };
 
 let rootIndex = 0; // C
@@ -158,6 +160,14 @@ els.arpToggle.addEventListener('change', () => {
   engine.setArpEnabled(els.arpToggle.checked);
 });
 
+els.windToggle.addEventListener('change', () => {
+  engine.setWindEnabled(els.windToggle.checked);
+});
+
+els.twinkleToggle.addEventListener('change', () => {
+  engine.setTwinkleEnabled(els.twinkleToggle.checked);
+});
+
 els.tempo.addEventListener('input', () => {
   const bpm = Number(els.tempo.value);
   engine.setTempo(bpm);
@@ -178,6 +188,8 @@ function beginPlayback() {
     engine.setChord(rootIndex, chordTypeIndex, toneIndex);
   }
   if (els.arpToggle.checked) engine.setArpEnabled(true);
+  if (els.windToggle.checked) engine.setWindEnabled(true);
+  if (els.twinkleToggle.checked) engine.setTwinkleEnabled(true);
 }
 
 els.playToggle.addEventListener('click', () => {

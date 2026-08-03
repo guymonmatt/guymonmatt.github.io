@@ -22,7 +22,8 @@ sitemap: true
       <p>
         A slow-moving ambient synth pad. Spin the wheels to change the root
         note, the chord type, and the synth tone &mdash; flip on the arp to
-        have it pick out the notes of whatever chord you're holding.
+        have it pick out the notes of whatever chord you're holding, or add
+        wind and twinkling chimes for texture underneath.
       </p>
       <button id="driftwheel-start" class="driftwheel-button">Start drifting</button>
       <p class="driftwheel-fineprint">Turn your volume up. Works best with headphones.</p>
@@ -62,6 +63,23 @@ sitemap: true
       <div class="driftwheel-wheel-group driftwheel-arp-small">
         <div class="driftwheel-wheel-caption">Rate</div>
         <div id="driftwheel-wheel-arp-rate"></div>
+      </div>
+    </div>
+
+    <div class="driftwheel-arp-row">
+      <div class="driftwheel-switch-group">
+        <div class="driftwheel-wheel-caption">Wind</div>
+        <label class="driftwheel-switch">
+          <input type="checkbox" id="driftwheel-wind-toggle">
+          <span class="driftwheel-switch-track"></span>
+        </label>
+      </div>
+      <div class="driftwheel-switch-group">
+        <div class="driftwheel-wheel-caption">Twinkle</div>
+        <label class="driftwheel-switch">
+          <input type="checkbox" id="driftwheel-twinkle-toggle">
+          <span class="driftwheel-switch-track"></span>
+        </label>
       </div>
     </div>
 
