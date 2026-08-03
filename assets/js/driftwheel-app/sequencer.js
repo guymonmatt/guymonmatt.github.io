@@ -1,6 +1,4 @@
----
----
-import { NOTE_NAMES, CHORD_TYPES, TONES } from './theory.js?v={{ site.time | date: '%s' }}';
+import { NOTE_NAMES, CHORD_TYPES, TONES } from './theory.js';
 
 export const STEP_COUNT = 8;
 
