@@ -26,6 +26,7 @@ const els = {
   twinkleVolume: document.getElementById('driftwheel-twinkle-volume'),
   delayToggle: document.getElementById('driftwheel-delay-toggle'),
   reverb: document.getElementById('driftwheel-reverb'),
+  chorusToggle: document.getElementById('driftwheel-chorus-toggle'),
 };
 
 let rootIndex = 0; // C
@@ -177,6 +178,10 @@ els.delayToggle.addEventListener('change', () => {
   engine.setDelayEnabled(els.delayToggle.checked);
 });
 
+els.chorusToggle.addEventListener('change', () => {
+  engine.setChorusEnabled(els.chorusToggle.checked);
+});
+
 els.reverb.addEventListener('input', () => {
   engine.setReverbAmount(Number(els.reverb.value) / 100);
 });
@@ -228,6 +233,7 @@ function beginPlayback() {
   if (els.windToggle.checked) engine.setWindEnabled(true);
   if (els.twinkleToggle.checked) engine.setTwinkleEnabled(true);
   if (els.delayToggle.checked) engine.setDelayEnabled(true);
+  if (els.chorusToggle.checked) engine.setChorusEnabled(true);
 }
 
 els.playToggle.addEventListener('click', () => {

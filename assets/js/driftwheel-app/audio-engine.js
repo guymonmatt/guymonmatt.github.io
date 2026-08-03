@@ -277,6 +277,7 @@ export class AudioEngine {
     // wet level (0.32 / 0.7 ≈ 0.46) so the default sound doesn't change.
     this.reverbAmount = 0.46;
     this.delayEnabled = false;
+    this.chorusEnabled = false;
   }
 
   init() {
@@ -314,6 +315,36 @@ export class AudioEngine {
     this.delayWet = ctx.createGain();
     this.delayWet.gain.value = 0;
 
+    // Chorus send: two short delay lines, each wobbled a few milliseconds
+    // by its own slow LFO (slightly different rates so the two sides drift
+    // independently) and panned hard left/right — the classic chorus trick
+    // of smearing pitch and timing just enough to thicken the sound without
+    // it reading as an obvious echo. Off (chorusWet at 0) until enabled.
+    this.chorusDelayL = ctx.createDelay(0.05);
+    this.chorusDelayL.delayTime.value = 0.015;
+    this.chorusLfoL = ctx.createOscillator();
+    this.chorusLfoL.frequency.value = 0.3;
+    this.chorusLfoGainL = ctx.createGain();
+    this.chorusLfoGainL.gain.value = 0.004;
+    this.chorusLfoL.connect(this.chorusLfoGainL).connect(this.chorusDelayL.delayTime);
+    this.chorusLfoL.start();
+
+    this.chorusDelayR = ctx.createDelay(0.05);
+    this.chorusDelayR.delayTime.value = 0.021;
+    this.chorusLfoR = ctx.createOscillator();
+    this.chorusLfoR.frequency.value = 0.23;
+    this.chorusLfoGainR = ctx.createGain();
+    this.chorusLfoGainR.gain.value = 0.004;
+    this.chorusLfoR.connect(this.chorusLfoGainR).connect(this.chorusDelayR.delayTime);
+    this.chorusLfoR.start();
+
+    this.chorusPannerL = ctx.createStereoPanner();
+    this.chorusPannerL.pan.value = -0.8;
+    this.chorusPannerR = ctx.createStereoPanner();
+    this.chorusPannerR.pan.value = 0.8;
+    this.chorusWet = ctx.createGain();
+    this.chorusWet.gain.value = 0;
+
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 256;
     this._levelData = new Uint8Array(this.analyser.frequencyBinCount);
@@ -332,6 +363,12 @@ export class AudioEngine {
     this.delayFeedback.connect(this.delay); // feedback loop
     this.delayFilter.connect(this.delayWet);
     this.delayWet.connect(this.masterGain);
+
+    this.panner.connect(this.chorusDelayL);
+    this.panner.connect(this.chorusDelayR);
+    this.chorusDelayL.connect(this.chorusPannerL).connect(this.chorusWet);
+    this.chorusDelayR.connect(this.chorusPannerR).connect(this.chorusWet);
+    this.chorusWet.connect(this.masterGain);
 
     this.masterGain.connect(this.analyser);
     this.analyser.connect(ctx.destination);
@@ -459,6 +496,15 @@ export class AudioEngine {
     this.delayWet.gain.cancelScheduledValues(now);
     this.delayWet.gain.setValueAtTime(this.delayWet.gain.value, now);
     this.delayWet.gain.linearRampToValueAtTime(enabled ? 0.28 : 0, now + 1.2);
+  }
+
+  setChorusEnabled(enabled) {
+    this.chorusEnabled = enabled;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.chorusWet.gain.cancelScheduledValues(now);
+    this.chorusWet.gain.setValueAtTime(this.chorusWet.gain.value, now);
+    this.chorusWet.gain.linearRampToValueAtTime(enabled ? 0.35 : 0, now + 1.2);
   }
 
   setArpEnabled(enabled) {
