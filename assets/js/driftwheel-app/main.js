@@ -27,6 +27,7 @@ const els = {
   delayToggle: document.getElementById('driftwheel-delay-toggle'),
   reverb: document.getElementById('driftwheel-reverb'),
   chorusToggle: document.getElementById('driftwheel-chorus-toggle'),
+  subDroneToggle: document.getElementById('driftwheel-subdrone-toggle'),
 };
 
 let rootIndex = 0; // C
@@ -182,6 +183,18 @@ els.chorusToggle.addEventListener('change', () => {
   engine.setChorusEnabled(els.chorusToggle.checked);
 });
 
+els.subDroneToggle.addEventListener('change', () => {
+  engine.setSubDroneEnabled(els.subDroneToggle.checked);
+});
+
+const subDroneNoteWheel = new Wheel({
+  container: document.getElementById('driftwheel-wheel-subdrone-note'),
+  options: NOTE_NAMES,
+  index: 0,
+  label: 'Sub drone note',
+  onChange: (i) => engine.setSubDroneNote(i),
+});
+
 els.reverb.addEventListener('input', () => {
   engine.setReverbAmount(Number(els.reverb.value) / 100);
 });
@@ -234,6 +247,7 @@ function beginPlayback() {
   if (els.twinkleToggle.checked) engine.setTwinkleEnabled(true);
   if (els.delayToggle.checked) engine.setDelayEnabled(true);
   if (els.chorusToggle.checked) engine.setChorusEnabled(true);
+  if (els.subDroneToggle.checked) engine.setSubDroneEnabled(true);
 }
 
 els.playToggle.addEventListener('click', () => {
@@ -263,6 +277,7 @@ async function start() {
     engine.setTwinkleVolume(Number(els.twinkleVolume.value) / 100);
     engine.setTwinkleTone(twinkleToneWheel.index);
     engine.setReverbAmount(Number(els.reverb.value) / 100);
+    engine.setSubDroneNote(subDroneNoteWheel.index);
   } catch (err) {
     // Whatever went wrong with the audio graph, don't leave the intro card
     // stuck forever — show the panel so the wheels/back button still work.
