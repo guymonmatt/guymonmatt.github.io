@@ -24,6 +24,16 @@ export const TONES = [
   { name: 'Noise Wash', type: 'noise', short: 'Noise' },
 ];
 
+// Timbres for the twinkle ambience layer: each pairs an oscillator waveform
+// with a harmonic partial ratio (an integer multiple of the fundamental, so
+// it's always consonant with whatever chord tone the twinkle is voicing).
+export const TWINKLE_TONES = [
+  { name: 'Bell', waveform: 'sine', partialRatio: 3 },
+  { name: 'Chime', waveform: 'sine', partialRatio: 4 },
+  { name: 'Glass', waveform: 'triangle', partialRatio: 2 },
+  { name: 'Crystal', waveform: 'sine', partialRatio: 6 },
+];
+
 export const ARP_PATTERNS = ['Up', 'Down', 'Up-Down', 'Random'];
 
 export const ARP_RATES = [

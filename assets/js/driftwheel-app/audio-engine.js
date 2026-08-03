@@ -1,4 +1,4 @@
-import { buildChordFrequencies, CHORD_TYPES, TONES } from './theory.js';
+import { buildChordFrequencies, CHORD_TYPES, TONES, TWINKLE_TONES } from './theory.js';
 
 const PAD_ATTACK = 2.4;
 const PAD_RELEASE = 2.0;
@@ -138,16 +138,17 @@ function pluckVoice(ctx, destination, frequency, toneType, noiseBuffer, duration
 }
 
 // A short, soft bell-like ping used for the "twinkle" ambience layer: a
-// fundamental plus a quiet upper partial a twelfth above (the 3rd harmonic
-// — an octave plus a fifth), which is always consonant with the fundamental
-// regardless of key, so the shimmer never clashes with the current chord.
-// Fast attack, slow randomized decay so no two twinkles sound identical.
-// Frequency is chosen by the caller from the current chord's own tones,
-// transposed up into a high, glassy register.
-function twinkleVoice(ctx, destination, frequency, when) {
+// fundamental plus a quiet upper partial at an integer harmonic ratio (so
+// it's always consonant with the fundamental regardless of key — the
+// shimmer never clashes with the current chord). Fast attack, slow
+// randomized decay so no two twinkles sound identical. Frequency is chosen
+// by the caller from the current chord's own tones, transposed up into a
+// high, glassy register.
+function twinkleVoice(ctx, destination, frequency, when, options) {
+  const { waveform, partialRatio, volume } = options;
   const attack = 0.008;
   const decay = 1.6 + Math.random() * 1.4;
-  const peak = 0.09 + Math.random() * 0.06;
+  const peak = (0.09 + Math.random() * 0.06) * volume * 2;
 
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, when);
@@ -159,13 +160,13 @@ function twinkleVoice(ctx, destination, frequency, when) {
   gain.connect(pan).connect(destination);
 
   const osc = ctx.createOscillator();
-  osc.type = 'sine';
+  osc.type = waveform;
   osc.frequency.value = frequency;
   osc.connect(gain);
 
   const partial = ctx.createOscillator();
-  partial.type = 'sine';
-  partial.frequency.value = frequency * 3; // a twelfth up: always in tune with the fundamental
+  partial.type = waveform;
+  partial.frequency.value = frequency * partialRatio;
   const partialGain = ctx.createGain();
   partialGain.gain.value = 0.2;
   partial.connect(partialGain).connect(gain);
@@ -258,7 +259,18 @@ export class AudioEngine {
     };
 
     // Ambience layers: generative wind + twinkle, independent of the pad.
-    this.twinkle = { enabled: false, timerId: null, nextTime: 0 };
+    // octaveRange/density are normalized 0-1 touchpad axes (X/Y); volume is
+    // a 0-1 scalar; toneIndex picks from TWINKLE_TONES. Defaults reproduce
+    // the original fixed twinkle sound before these became adjustable.
+    this.twinkle = {
+      enabled: false,
+      timerId: null,
+      nextTime: 0,
+      octaveRange: 0.33,
+      density: 0.4,
+      volume: 0.5,
+      toneIndex: 0,
+    };
     this.windEnabled = false;
   }
 
@@ -543,6 +555,24 @@ export class AudioEngine {
     else this._stopTwinkle();
   }
 
+  // x: 0 (low, ~1 octave up) to 1 (high, ~4 octaves up).
+  setTwinkleOctaveRange(x) {
+    this.twinkle.octaveRange = x;
+  }
+
+  // y: 0 (dense, frequent) to 1 (sparse, rare).
+  setTwinkleDensity(y) {
+    this.twinkle.density = y;
+  }
+
+  setTwinkleVolume(v) {
+    this.twinkle.volume = v;
+  }
+
+  setTwinkleTone(index) {
+    this.twinkle.toneIndex = index;
+  }
+
   _startTwinkle() {
     if (this.twinkle.timerId || !this.ctx) return;
     this.twinkle.nextTime = this.ctx.currentTime + 0.6;
@@ -556,17 +586,35 @@ export class AudioEngine {
     }
   }
 
+  _twinkleOctaveMultiplier() {
+    const center = 1 + this.twinkle.octaveRange * 3; // 1 to 4 octaves up
+    const choices = [center - 1, center, center, center + 1].map((o) => Math.max(1, Math.round(o)));
+    const octaves = choices[Math.floor(Math.random() * choices.length)];
+    return Math.pow(2, octaves); // integer octaves only, so the pitch class never shifts
+  }
+
+  _twinkleNextGap() {
+    const y = this.twinkle.density;
+    const minGap = 0.25 + y * (2.5 - 0.25);
+    const maxGap = 0.9 + y * (6 - 0.9);
+    return minGap + Math.random() * (maxGap - minGap);
+  }
+
   _scheduleTwinkle() {
     const lookahead = 0.6;
     while (this.twinkle.nextTime < this.ctx.currentTime + lookahead) {
       const frequencies = this.currentFrequencies;
       if (frequencies.length) {
         const base = frequencies[Math.floor(Math.random() * frequencies.length)];
-        const octaveMul = [2, 4, 4, 8][Math.floor(Math.random() * 4)]; // mostly 1-2 octaves up
-        twinkleVoice(this.ctx, this.voiceBus, base * octaveMul, this.twinkle.nextTime);
+        const tone = TWINKLE_TONES[this.twinkle.toneIndex] || TWINKLE_TONES[0];
+        twinkleVoice(this.ctx, this.voiceBus, base * this._twinkleOctaveMultiplier(), this.twinkle.nextTime, {
+          waveform: tone.waveform,
+          partialRatio: tone.partialRatio,
+          volume: this.twinkle.volume,
+        });
       }
       // Sparse, irregular gaps rather than a fixed rhythm.
-      this.twinkle.nextTime += 0.8 + Math.random() * 2.4;
+      this.twinkle.nextTime += this._twinkleNextGap();
     }
   }
 
