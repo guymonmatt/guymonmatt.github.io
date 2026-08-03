@@ -1,7 +1,8 @@
-import { NOTE_NAMES, CHORD_TYPES, TONES, ARP_PATTERNS, ARP_RATES } from './theory.js';
+import { NOTE_NAMES, CHORD_TYPES, TONES, TWINKLE_TONES, ARP_PATTERNS, ARP_RATES } from './theory.js';
 import { Wheel } from './wheel.js';
 import { AudioEngine } from './audio-engine.js';
 import { Sequencer } from './sequencer.js';
+import { TouchPad } from './touchpad.js';
 
 const engine = new AudioEngine();
 
@@ -21,6 +22,8 @@ const els = {
   seqGrid: document.getElementById('driftwheel-seq-grid'),
   windToggle: document.getElementById('driftwheel-wind-toggle'),
   twinkleToggle: document.getElementById('driftwheel-twinkle-toggle'),
+  twinklePad: document.getElementById('driftwheel-twinkle-pad'),
+  twinkleVolume: document.getElementById('driftwheel-twinkle-volume'),
 };
 
 let rootIndex = 0; // C
@@ -168,6 +171,30 @@ els.twinkleToggle.addEventListener('change', () => {
   engine.setTwinkleEnabled(els.twinkleToggle.checked);
 });
 
+// Defaults (0.33, 0.4) reproduce the twinkle sound as originally shipped;
+// see the matching defaults in AudioEngine's constructor.
+const twinklePad = new TouchPad({
+  container: els.twinklePad,
+  x: 0.33,
+  y: 0.4,
+  onChange: (x, y) => {
+    engine.setTwinkleOctaveRange(x);
+    engine.setTwinkleDensity(y);
+  },
+});
+
+const twinkleToneWheel = new Wheel({
+  container: document.getElementById('driftwheel-wheel-twinkle-tone'),
+  options: TWINKLE_TONES.map((t) => t.name),
+  index: 0,
+  label: 'Twinkle tone',
+  onChange: (i) => engine.setTwinkleTone(i),
+});
+
+els.twinkleVolume.addEventListener('input', () => {
+  engine.setTwinkleVolume(Number(els.twinkleVolume.value) / 100);
+});
+
 els.tempo.addEventListener('input', () => {
   const bpm = Number(els.tempo.value);
   engine.setTempo(bpm);
@@ -214,6 +241,10 @@ async function start() {
     engine.setTempo(Number(els.tempo.value));
     engine.setArpRate(ARP_RATES[arpRateWheel.index].div);
     engine.setArpPattern(ARP_PATTERNS[arpPatternWheel.index]);
+    engine.setTwinkleOctaveRange(twinklePad.x);
+    engine.setTwinkleDensity(twinklePad.y);
+    engine.setTwinkleVolume(Number(els.twinkleVolume.value) / 100);
+    engine.setTwinkleTone(twinkleToneWheel.index);
   } catch (err) {
     // Whatever went wrong with the audio graph, don't leave the intro card
     // stuck forever — show the panel so the wheels/back button still work.
