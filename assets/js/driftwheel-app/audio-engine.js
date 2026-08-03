@@ -1,6 +1,4 @@
----
----
-import { buildChordFrequencies, noteFrequency, CHORD_TYPES, TONES, TWINKLE_TONES } from './theory.js?v={{ site.time | date: '%s' }}';
+import { buildChordFrequencies, noteFrequency, CHORD_TYPES, TONES, TWINKLE_TONES } from './theory.js';
 
 const PAD_ATTACK = 2.4;
 const PAD_RELEASE = 2.0;
