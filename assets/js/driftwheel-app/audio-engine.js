@@ -3,7 +3,7 @@ import { buildChordFrequencies, noteFrequency, CHORD_TYPES, TONES, TWINKLE_TONES
 const PAD_ATTACK = 2.4;
 const PAD_RELEASE = 2.0;
 const NOISE_BUFFER_SECONDS = 2;
-const REVERB_SECONDS = 3.2;
+const REVERB_SECONDS = 8;
 
 // Sustained chord tone. Wraps either oscillator(s) (for the tonal timbres and
 // the two-oscillator "glass" blend) or a filtered noise loop (for "Noise
@@ -207,13 +207,26 @@ function buildWindBuffer(ctx) {
   return buffer;
 }
 
+// A big, lush algorithmic reverb tail: a short pre-delay for clarity before
+// the wash blooms in, then two layered decays summed together — a denser,
+// faster "body" plus a very slowly-fading "tail" — rather than one flat
+// exponential drop-off, for a bigger, more three-dimensional wash at high
+// wet levels instead of a short, thin "digital plate" sound.
 function buildImpulseResponse(ctx) {
   const length = Math.floor(ctx.sampleRate * REVERB_SECONDS);
+  const preDelaySamples = Math.floor(ctx.sampleRate * 0.02);
   const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
   for (let channel = 0; channel < 2; channel++) {
     const data = impulse.getChannelData(channel);
     for (let i = 0; i < length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
+      if (i < preDelaySamples) {
+        data[i] = 0;
+        continue;
+      }
+      const t = (i - preDelaySamples) / (length - preDelaySamples);
+      const body = Math.pow(1 - t, 3) * 0.8;
+      const tail = Math.pow(1 - t, 0.9) * 0.5;
+      data[i] = (Math.random() * 2 - 1) * (body + tail);
     }
   }
   return impulse;
@@ -274,8 +287,10 @@ export class AudioEngine {
     this.windEnabled = false;
 
     // Effects sends. reverbAmount matches the convolver's original fixed
-    // wet level (0.32 / 0.7 ≈ 0.46) so the default sound doesn't change.
-    this.reverbAmount = 0.46;
+    // wet level (0.32 / 1.3 ≈ 0.25) so the default sound doesn't change
+    // even though the top of the range now goes much further (see
+    // setReverbAmount) — only the slider's upper reach got more intense.
+    this.reverbAmount = 0.25;
     this.delayEnabled = false;
     this.chorusEnabled = false;
 
@@ -301,10 +316,25 @@ export class AudioEngine {
 
     this.convolver = ctx.createConvolver();
     this.convolver.buffer = buildImpulseResponse(ctx);
+
+    // A short LFO-modulated delay sits between the convolver and the wet
+    // gain, wobbling the tail by a couple of milliseconds — the same trick
+    // as the chorus effect, applied only to the reverb's wet signal. Gives
+    // the tail a subtle liquid shimmer rather than a static, flat wash,
+    // more noticeable the wetter (and therefore more intense) it gets.
+    this.reverbModDelay = ctx.createDelay(0.03);
+    this.reverbModDelay.delayTime.value = 0.012;
+    this.reverbModLfo = ctx.createOscillator();
+    this.reverbModLfo.frequency.value = 0.6;
+    this.reverbModLfoGain = ctx.createGain();
+    this.reverbModLfoGain.gain.value = 0.004;
+    this.reverbModLfo.connect(this.reverbModLfoGain).connect(this.reverbModDelay.delayTime);
+    this.reverbModLfo.start();
+
     this.wetGain = ctx.createGain();
-    this.wetGain.gain.value = this.reverbAmount * 0.7;
+    this.wetGain.gain.value = this.reverbAmount * 1.3;
     this.dryGain = ctx.createGain();
-    this.dryGain.gain.value = 0.85;
+    this.dryGain.gain.value = 0.85 - this.reverbAmount * 0.25;
 
     // Echo send: a feedback delay line, tempo-synced (see setTempo), tapping
     // the same pre-reverb signal as the dry/wet reverb split above. Off
@@ -357,7 +387,8 @@ export class AudioEngine {
     this.filter.connect(this.panner);
     this.panner.connect(this.dryGain);
     this.panner.connect(this.convolver);
-    this.convolver.connect(this.wetGain);
+    this.convolver.connect(this.reverbModDelay);
+    this.reverbModDelay.connect(this.wetGain);
     this.dryGain.connect(this.masterGain);
     this.wetGain.connect(this.masterGain);
 
@@ -507,14 +538,20 @@ export class AudioEngine {
     this.masterGain.gain.linearRampToValueAtTime(v, now + 0.1);
   }
 
-  // v: 0 (no reverb) to 1 (max wet). 1 maps to a 0.7 wet gain — lush, but
-  // short of drowning the dry signal, which stays fixed.
+  // v: 0 (no reverb) to 1 (max wet). 1 maps to a 1.3 wet gain — well past
+  // the dry level, so the top of the range can fully wash out and drench
+  // the pad rather than just sitting politely underneath it. The dry
+  // signal recedes slightly as wet rises too (0.85 down to 0.6), so the
+  // wash actually takes over rather than just layering on an unchanged
+  // dry signal — closer to a "kill dry"-style control than a simple mix.
   setReverbAmount(v) {
     this.reverbAmount = v;
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.wetGain.gain.cancelScheduledValues(now);
-    this.wetGain.gain.linearRampToValueAtTime(v * 0.7, now + 0.2);
+    this.wetGain.gain.linearRampToValueAtTime(v * 1.3, now + 0.2);
+    this.dryGain.gain.cancelScheduledValues(now);
+    this.dryGain.gain.linearRampToValueAtTime(0.85 - v * 0.25, now + 0.2);
   }
 
   setDelayEnabled(enabled) {
