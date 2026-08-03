@@ -272,6 +272,11 @@ export class AudioEngine {
       toneIndex: 0,
     };
     this.windEnabled = false;
+
+    // Effects sends. reverbAmount matches the convolver's original fixed
+    // wet level (0.32 / 0.7 ≈ 0.46) so the default sound doesn't change.
+    this.reverbAmount = 0.46;
+    this.delayEnabled = false;
   }
 
   init() {
@@ -292,21 +297,42 @@ export class AudioEngine {
     this.convolver = ctx.createConvolver();
     this.convolver.buffer = buildImpulseResponse(ctx);
     this.wetGain = ctx.createGain();
-    this.wetGain.gain.value = 0.32;
+    this.wetGain.gain.value = this.reverbAmount * 0.7;
     this.dryGain = ctx.createGain();
     this.dryGain.gain.value = 0.85;
+
+    // Echo send: a feedback delay line, tempo-synced (see setTempo), tapping
+    // the same pre-reverb signal as the dry/wet reverb split above. Off
+    // (delayWet at 0) until setDelayEnabled(true).
+    this.delay = ctx.createDelay(2.0);
+    this.delay.delayTime.value = 0.5;
+    this.delayFeedback = ctx.createGain();
+    this.delayFeedback.gain.value = 0.35;
+    this.delayFilter = ctx.createBiquadFilter();
+    this.delayFilter.type = 'lowpass';
+    this.delayFilter.frequency.value = 2800; // keeps repeats from building up brightness
+    this.delayWet = ctx.createGain();
+    this.delayWet.gain.value = 0;
 
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 256;
     this._levelData = new Uint8Array(this.analyser.frequencyBinCount);
 
-    // voices -> filter -> panner -> split to dry + reverb send -> master -> out
+    // voices -> filter -> panner -> {dry, reverb send, delay send} -> master -> out
     this.filter.connect(this.panner);
     this.panner.connect(this.dryGain);
     this.panner.connect(this.convolver);
     this.convolver.connect(this.wetGain);
     this.dryGain.connect(this.masterGain);
     this.wetGain.connect(this.masterGain);
+
+    this.panner.connect(this.delay);
+    this.delay.connect(this.delayFilter);
+    this.delayFilter.connect(this.delayFeedback);
+    this.delayFeedback.connect(this.delay); // feedback loop
+    this.delayFilter.connect(this.delayWet);
+    this.delayWet.connect(this.masterGain);
+
     this.masterGain.connect(this.analyser);
     this.analyser.connect(ctx.destination);
 
@@ -416,6 +442,25 @@ export class AudioEngine {
     this.masterGain.gain.linearRampToValueAtTime(v, now + 0.1);
   }
 
+  // v: 0 (no reverb) to 1 (max wet). 1 maps to a 0.7 wet gain — lush, but
+  // short of drowning the dry signal, which stays fixed.
+  setReverbAmount(v) {
+    this.reverbAmount = v;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.wetGain.gain.cancelScheduledValues(now);
+    this.wetGain.gain.linearRampToValueAtTime(v * 0.7, now + 0.2);
+  }
+
+  setDelayEnabled(enabled) {
+    this.delayEnabled = enabled;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.delayWet.gain.cancelScheduledValues(now);
+    this.delayWet.gain.setValueAtTime(this.delayWet.gain.value, now);
+    this.delayWet.gain.linearRampToValueAtTime(enabled ? 0.28 : 0, now + 1.2);
+  }
+
   setArpEnabled(enabled) {
     this.arp.enabled = enabled;
     if (enabled) this._startArpScheduler();
@@ -434,6 +479,9 @@ export class AudioEngine {
 
   setTempo(bpm) {
     this.arp.tempo = bpm;
+    // Keep the echo in the same rhythmic pocket as the arp/sequencer: a
+    // dotted-eighth delay relative to the current tempo.
+    if (this.delay) this.delay.delayTime.setTargetAtTime((60 / bpm) * 0.75, this.ctx.currentTime, 0.05);
   }
 
   _startArpScheduler() {
