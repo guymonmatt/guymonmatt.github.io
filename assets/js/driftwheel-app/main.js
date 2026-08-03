@@ -24,6 +24,8 @@ const els = {
   twinkleToggle: document.getElementById('driftwheel-twinkle-toggle'),
   twinklePad: document.getElementById('driftwheel-twinkle-pad'),
   twinkleVolume: document.getElementById('driftwheel-twinkle-volume'),
+  delayToggle: document.getElementById('driftwheel-delay-toggle'),
+  reverb: document.getElementById('driftwheel-reverb'),
 };
 
 let rootIndex = 0; // C
@@ -171,6 +173,14 @@ els.twinkleToggle.addEventListener('change', () => {
   engine.setTwinkleEnabled(els.twinkleToggle.checked);
 });
 
+els.delayToggle.addEventListener('change', () => {
+  engine.setDelayEnabled(els.delayToggle.checked);
+});
+
+els.reverb.addEventListener('input', () => {
+  engine.setReverbAmount(Number(els.reverb.value) / 100);
+});
+
 // Defaults (0.33, 0.4) reproduce the twinkle sound as originally shipped;
 // see the matching defaults in AudioEngine's constructor.
 const twinklePad = new TouchPad({
@@ -217,6 +227,7 @@ function beginPlayback() {
   if (els.arpToggle.checked) engine.setArpEnabled(true);
   if (els.windToggle.checked) engine.setWindEnabled(true);
   if (els.twinkleToggle.checked) engine.setTwinkleEnabled(true);
+  if (els.delayToggle.checked) engine.setDelayEnabled(true);
 }
 
 els.playToggle.addEventListener('click', () => {
@@ -245,6 +256,7 @@ async function start() {
     engine.setTwinkleDensity(twinklePad.y);
     engine.setTwinkleVolume(Number(els.twinkleVolume.value) / 100);
     engine.setTwinkleTone(twinkleToneWheel.index);
+    engine.setReverbAmount(Number(els.reverb.value) / 100);
   } catch (err) {
     // Whatever went wrong with the audio graph, don't leave the intro card
     // stuck forever — show the panel so the wheels/back button still work.
