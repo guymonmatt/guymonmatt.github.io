@@ -75,6 +75,21 @@ sitemap: true
         <input type="range" id="driftwheel-volume" min="0" max="100" value="60">
       </div>
     </div>
+
+    <div class="driftwheel-seq-section">
+      <div class="driftwheel-seq-toolbar">
+        <div class="driftwheel-switch-group">
+          <div class="driftwheel-wheel-caption">Sequence</div>
+          <label class="driftwheel-switch">
+            <input type="checkbox" id="driftwheel-seq-toggle">
+            <span class="driftwheel-switch-track"></span>
+          </label>
+        </div>
+        <button id="driftwheel-seq-clear" class="driftwheel-seq-clear-btn" type="button" hidden>Clear step</button>
+      </div>
+      <div id="driftwheel-seq-grid" class="driftwheel-seq-grid" role="list" aria-label="Chord sequence"></div>
+      <p class="driftwheel-fineprint">Tap a tile to fill it with the current wheels, or to edit an existing step. Tap it again to deselect.</p>
+    </div>
   </div>
 
 </div>

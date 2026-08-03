@@ -174,6 +174,19 @@ export class AudioEngine {
       direction: 1,
     };
     this.volume = 0.6;
+
+    // Chord sequencer: steps in a fixed-length array, each either null
+    // (a rest) or { rootIndex, chordTypeIndex, toneIndex }. Shares the
+    // "tempo" set via setTempo() with the arp, at a fixed 4 beats/step.
+    this.sequence = [];
+    this.seq = {
+      enabled: false,
+      stepBeats: 4,
+      stepIndex: -1,
+      timerId: null,
+      nextStepTime: 0,
+      onStepChange: null,
+    };
   }
 
   init() {
@@ -351,8 +364,56 @@ export class AudioEngine {
     }
   }
 
+  setSequence(steps) {
+    this.sequence = steps;
+  }
+
+  setSequencerEnabled(enabled, onStepChange) {
+    this.seq.enabled = enabled;
+    this.seq.onStepChange = onStepChange || null;
+    if (enabled) this._startSequencer();
+    else this._stopSequencer();
+  }
+
+  _startSequencer() {
+    if (this.seq.timerId || !this.ctx) return;
+    this.seq.stepIndex = -1;
+    this.seq.nextStepTime = this.ctx.currentTime;
+    this._advanceStep();
+    this.seq.timerId = setInterval(() => {
+      if (this.ctx.currentTime >= this.seq.nextStepTime) this._advanceStep();
+    }, 50);
+  }
+
+  _stopSequencer() {
+    if (this.seq.timerId) {
+      clearInterval(this.seq.timerId);
+      this.seq.timerId = null;
+    }
+  }
+
+  _advanceStep() {
+    const length = this.sequence.length;
+    if (!length) return;
+    this.seq.stepIndex = (this.seq.stepIndex + 1) % length;
+    const stepDuration = (60 / this.arp.tempo) * this.seq.stepBeats;
+    this.seq.nextStepTime = this.ctx.currentTime + stepDuration;
+
+    const step = this.sequence[this.seq.stepIndex];
+    if (step) {
+      this.setChord(step.rootIndex, step.chordTypeIndex, step.toneIndex);
+    } else {
+      // A rest: fade the pad out without starting anything new.
+      this.currentFrequencies = [];
+      this._retriggerPad([], this.currentToneType);
+    }
+
+    if (this.seq.onStepChange) this.seq.onStepChange(this.seq.stepIndex);
+  }
+
   stopAll() {
     this._stopArpScheduler();
+    this._stopSequencer();
     this.padVoices.forEach((voice) => voice.fadeOutAndStop());
     this.padVoices = [];
   }
