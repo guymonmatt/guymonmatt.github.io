@@ -127,12 +127,15 @@
   left: 0;
   right: 0;
   bottom: 0;
+  max-height: 100%;
   z-index: 4;
   display: none;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: #eef3f7;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: linear-gradient(to top, rgba(6, 10, 16, 0.92), rgba(6, 10, 16, 0.55) 70%, transparent);
@@ -332,4 +335,102 @@
 .driftwheel-play.is-playing {
   background: #7ea8ff;
   color: #060a10;
+}
+
+/* Chord sequencer: a grid of colored, glowing step tiles. */
+.driftwheel-seq-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.driftwheel-seq-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.driftwheel-seq-clear-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef3f7;
+  cursor: pointer;
+}
+
+.driftwheel-seq-clear-btn[hidden] {
+  display: none;
+}
+
+.driftwheel-seq-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.seq-tile {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  color: #eef3f7;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+
+.seq-tile-empty {
+  font-size: 18px;
+  opacity: 0.35;
+}
+
+.seq-tile-chord {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.seq-tile-tone {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.seq-tile.is-filled {
+  background: hsla(var(--tile-hue, 210), 65%, 45%, 0.28);
+  border-color: hsla(var(--tile-hue, 210), 70%, 60%, 0.55);
+  box-shadow: 0 0 10px 1px hsla(var(--tile-hue, 210), 70%, 55%, 0.35);
+}
+
+.seq-tile.is-selected {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.seq-tile.is-playing {
+  transform: scale(1.06);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 14px 2px rgba(255, 255, 255, 0.3);
+}
+
+.seq-tile.is-playing.is-filled {
+  border-color: hsla(var(--tile-hue, 210), 80%, 70%, 0.9);
+  box-shadow: 0 0 20px 4px hsla(var(--tile-hue, 210), 80%, 60%, 0.65);
 }

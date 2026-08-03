@@ -16,12 +16,12 @@ export const CHORD_TYPES = [
 ];
 
 export const TONES = [
-  { name: 'Warm Sine', type: 'sine' },
-  { name: 'Soft Triangle', type: 'triangle' },
-  { name: 'Bright Saw', type: 'sawtooth' },
-  { name: 'Hollow Square', type: 'square' },
-  { name: 'Glass', type: 'glass' },
-  { name: 'Noise Wash', type: 'noise' },
+  { name: 'Warm Sine', type: 'sine', short: 'Sine' },
+  { name: 'Soft Triangle', type: 'triangle', short: 'Tri' },
+  { name: 'Bright Saw', type: 'sawtooth', short: 'Saw' },
+  { name: 'Hollow Square', type: 'square', short: 'Sqr' },
+  { name: 'Glass', type: 'glass', short: 'Glass' },
+  { name: 'Noise Wash', type: 'noise', short: 'Noise' },
 ];
 
 export const ARP_PATTERNS = ['Up', 'Down', 'Up-Down', 'Random'];

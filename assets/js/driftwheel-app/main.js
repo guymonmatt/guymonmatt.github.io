@@ -1,6 +1,7 @@
 import { NOTE_NAMES, CHORD_TYPES, TONES, ARP_PATTERNS, ARP_RATES } from './theory.js';
 import { Wheel } from './wheel.js';
 import { AudioEngine } from './audio-engine.js';
+import { Sequencer } from './sequencer.js';
 
 const engine = new AudioEngine();
 
@@ -15,20 +16,35 @@ const els = {
   volume: document.getElementById('driftwheel-volume'),
   chordLabel: document.getElementById('driftwheel-chord-label'),
   canvas: document.getElementById('driftwheel-canvas'),
+  seqToggle: document.getElementById('driftwheel-seq-toggle'),
+  seqClear: document.getElementById('driftwheel-seq-clear'),
+  seqGrid: document.getElementById('driftwheel-seq-grid'),
 };
 
 let rootIndex = 0; // C
 let chordTypeIndex = 0; // Major
 let toneIndex = 0; // Warm Sine
 let playing = false;
+// When a sequencer step tile is selected, the wheels edit that step instead
+// of the live chord — see applyChord() and the tone wheel's onChange below.
+let selectedStepIndex = null;
+// Root note driving the background glow's hue — tracks the wheels normally,
+// but follows the sequencer's active step while it's playing (see
+// handleSequencerStep below) so the glow matches what's actually sounding.
+let activeRootIndex = rootIndex;
 
 function updateChordLabel() {
+  activeRootIndex = rootIndex;
   els.chordLabel.textContent = `${NOTE_NAMES[rootIndex]} ${CHORD_TYPES[chordTypeIndex].name}`;
 }
 
 function applyChord() {
   updateChordLabel();
-  if (playing) engine.setChord(rootIndex, chordTypeIndex, toneIndex);
+  if (selectedStepIndex !== null) {
+    sequencer.setSelectedStep({ rootIndex, chordTypeIndex, toneIndex });
+  } else if (playing) {
+    engine.setChord(rootIndex, chordTypeIndex, toneIndex);
+  }
 }
 
 const rootWheel = new Wheel({
@@ -60,7 +76,11 @@ const toneWheel = new Wheel({
   label: 'Synth tone',
   onChange: (i) => {
     toneIndex = i;
-    if (playing) engine.setTone(toneIndex);
+    if (selectedStepIndex !== null) {
+      sequencer.setSelectedStep({ rootIndex, chordTypeIndex, toneIndex });
+    } else if (playing) {
+      engine.setTone(toneIndex);
+    }
   },
 });
 
@@ -82,6 +102,58 @@ const arpRateWheel = new Wheel({
 
 engine.setArpRate(ARP_RATES[2].div);
 
+const sequencer = new Sequencer({
+  container: els.seqGrid,
+  onSelect: (index, step) => {
+    selectedStepIndex = index;
+    els.seqClear.hidden = index === null;
+    if (index === null) return;
+    if (step) {
+      // Sync the wheels to reflect this existing step's stored values.
+      rootIndex = step.rootIndex;
+      chordTypeIndex = step.chordTypeIndex;
+      toneIndex = step.toneIndex;
+      rootWheel.scrollToIndex(step.rootIndex, true);
+      typeWheel.scrollToIndex(step.chordTypeIndex, true);
+      toneWheel.scrollToIndex(step.toneIndex, true);
+      updateChordLabel();
+    } else {
+      // An empty tile was just selected: fill it with whatever's dialed in.
+      sequencer.setSelectedStep({ rootIndex, chordTypeIndex, toneIndex });
+    }
+  },
+  onChange: (steps) => engine.setSequence(steps),
+});
+engine.setSequence(sequencer.steps);
+
+// While the sequence plays, show whichever step is currently sounding at
+// the top — unless a tile is being edited, in which case that edit takes
+// priority (handled by updateChordLabel()/applyChord() elsewhere).
+function handleSequencerStep(i) {
+  sequencer.setPlayingIndex(i);
+  if (selectedStepIndex !== null) return;
+  const step = sequencer.steps[i];
+  if (step) activeRootIndex = step.rootIndex;
+  els.chordLabel.textContent = step ? `${NOTE_NAMES[step.rootIndex]} ${CHORD_TYPES[step.chordTypeIndex].name}` : '—';
+}
+
+els.seqToggle.addEventListener('change', () => {
+  if (!playing) return;
+  if (els.seqToggle.checked) {
+    engine.setSequencerEnabled(true, handleSequencerStep);
+  } else {
+    engine.setSequencerEnabled(false);
+    sequencer.setPlayingIndex(null);
+    // Hand control back to the wheels' current live chord.
+    engine.setChord(rootIndex, chordTypeIndex, toneIndex);
+    if (selectedStepIndex === null) updateChordLabel();
+  }
+});
+
+els.seqClear.addEventListener('click', () => {
+  sequencer.clearSelectedStep();
+});
+
 els.arpToggle.addEventListener('change', () => {
   engine.setArpEnabled(els.arpToggle.checked);
 });
@@ -96,15 +168,27 @@ els.volume.addEventListener('input', () => {
   engine.setVolume(Number(els.volume.value) / 100);
 });
 
+// Starts either the step sequencer or a plain held chord, then layers the
+// arp on top either way (it always arpeggiates whatever the engine is
+// currently sounding, sequenced or not).
+function beginPlayback() {
+  if (els.seqToggle.checked) {
+    engine.setSequencerEnabled(true, handleSequencerStep);
+  } else {
+    engine.setChord(rootIndex, chordTypeIndex, toneIndex);
+  }
+  if (els.arpToggle.checked) engine.setArpEnabled(true);
+}
+
 els.playToggle.addEventListener('click', () => {
   playing = !playing;
   if (playing) {
-    engine.setChord(rootIndex, chordTypeIndex, toneIndex);
-    if (els.arpToggle.checked) engine.setArpEnabled(true);
+    beginPlayback();
     els.playToggle.textContent = 'Pause';
     els.playToggle.classList.add('is-playing');
   } else {
     engine.stopAll();
+    sequencer.setPlayingIndex(null);
     els.playToggle.textContent = 'Play';
     els.playToggle.classList.remove('is-playing');
   }
@@ -129,7 +213,7 @@ async function start() {
   updateChordLabel();
 
   playing = true;
-  engine.setChord(rootIndex, chordTypeIndex, toneIndex);
+  beginPlayback();
   els.playToggle.textContent = 'Pause';
   els.playToggle.classList.add('is-playing');
 
@@ -154,7 +238,7 @@ function startVisualizer() {
   function frame() {
     t += 0.004;
     const level = engine.getLevel();
-    const hue = (rootIndex / 12) * 360;
+    const hue = (activeRootIndex / 12) * 360;
     ctx2d.fillStyle = 'rgba(6, 10, 16, 0.18)';
     ctx2d.fillRect(0, 0, w, h);
 
