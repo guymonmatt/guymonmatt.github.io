@@ -1,4 +1,4 @@
-import { buildChordFrequencies, CHORD_TYPES, TONES, TWINKLE_TONES } from './theory.js';
+import { buildChordFrequencies, noteFrequency, CHORD_TYPES, TONES, TWINKLE_TONES } from './theory.js';
 
 const PAD_ATTACK = 2.4;
 const PAD_RELEASE = 2.0;
@@ -278,6 +278,10 @@ export class AudioEngine {
     this.reverbAmount = 0.46;
     this.delayEnabled = false;
     this.chorusEnabled = false;
+
+    // Sub drone: a fixed pedal tone, tuned independently of whatever
+    // chord/root the wheels are set to.
+    this.subDrone = { enabled: false, pitchClass: 0, octave: 1 };
   }
 
   init() {
@@ -431,6 +435,30 @@ export class AudioEngine {
     this._windPanLfoGain.gain.value = 0.5;
     this._windPanLfo.connect(this._windPanLfoGain).connect(this.windPan.pan);
     this._windPanLfo.start();
+
+    // Sub drone: a sine fundamental plus a quiet octave-up partial (true
+    // sub frequencies barely reproduce on phone speakers, so the octave
+    // gives the ear something to lock onto there too), always running at
+    // zero gain until enabled. Bypasses the filter/panner/fx sends
+    // entirely — bass usually wants to stay dry, mono, and unaffected by
+    // reverb/delay/chorus for clarity — going straight to the master bus.
+    const subFreq = noteFrequency(this.subDrone.pitchClass, this.subDrone.octave);
+    this.subOsc = ctx.createOscillator();
+    this.subOsc.type = 'sine';
+    this.subOsc.frequency.value = subFreq;
+    this.subPartial = ctx.createOscillator();
+    this.subPartial.type = 'sine';
+    this.subPartial.frequency.value = subFreq * 2;
+    this.subPartialGain = ctx.createGain();
+    this.subPartialGain.gain.value = 0.25;
+    this.subGain = ctx.createGain();
+    this.subGain.gain.value = 0;
+
+    this.subOsc.connect(this.subGain);
+    this.subPartial.connect(this.subPartialGain).connect(this.subGain);
+    this.subGain.connect(this.masterGain);
+    this.subOsc.start();
+    this.subPartial.start();
   }
 
   async resume() {
@@ -505,6 +533,27 @@ export class AudioEngine {
     this.chorusWet.gain.cancelScheduledValues(now);
     this.chorusWet.gain.setValueAtTime(this.chorusWet.gain.value, now);
     this.chorusWet.gain.linearRampToValueAtTime(enabled ? 0.35 : 0, now + 1.2);
+  }
+
+  setSubDroneEnabled(enabled) {
+    this.subDrone.enabled = enabled;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.subGain.gain.cancelScheduledValues(now);
+    this.subGain.gain.setValueAtTime(this.subGain.gain.value, now);
+    this.subGain.gain.linearRampToValueAtTime(enabled ? 0.35 : 0, now + 2.5);
+  }
+
+  // Retunes the drone to a new pitch class, independent of whatever
+  // chord/root is currently selected. Glides rather than jumping, so
+  // retuning while it's sounding doesn't click.
+  setSubDroneNote(pitchClass) {
+    this.subDrone.pitchClass = pitchClass;
+    if (!this.ctx) return;
+    const freq = noteFrequency(pitchClass, this.subDrone.octave);
+    const now = this.ctx.currentTime;
+    this.subOsc.frequency.setTargetAtTime(freq, now, 0.15);
+    this.subPartial.frequency.setTargetAtTime(freq * 2, now, 0.15);
   }
 
   setArpEnabled(enabled) {
