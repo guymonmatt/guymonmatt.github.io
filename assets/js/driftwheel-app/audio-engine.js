@@ -504,10 +504,10 @@ export class AudioEngine {
     return sum / this._levelData.length / 255;
   }
 
-  setChord(rootPitchClass, chordTypeIndex, toneIndex) {
+  setChord(rootPitchClass, chordTypeIndex, toneIndex, inversion = 0) {
     const chordType = CHORD_TYPES[chordTypeIndex];
     const toneType = TONES[toneIndex].type;
-    const frequencies = buildChordFrequencies(rootPitchClass, chordType.intervals);
+    const frequencies = buildChordFrequencies(rootPitchClass, chordType.intervals, 3, inversion);
     this.currentFrequencies = frequencies;
     this.currentToneType = toneType;
     this._retriggerPad(frequencies, toneType);
@@ -705,7 +705,7 @@ export class AudioEngine {
 
     const step = this.sequence[this.seq.stepIndex];
     if (step) {
-      this.setChord(step.rootIndex, step.chordTypeIndex, step.toneIndex);
+      this.setChord(step.rootIndex, step.chordTypeIndex, step.toneIndex, step.inversion || 0);
     } else {
       // A rest: fade the pad out without starting anything new.
       this.currentFrequencies = [];
