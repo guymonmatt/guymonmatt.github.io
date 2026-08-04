@@ -3,9 +3,10 @@ import { NOTE_NAMES, CHORD_TYPES, TONES } from './theory.js';
 export const STEP_COUNT = 8;
 
 // A grid of tappable step tiles. Each step is either null (a rest) or
-// { rootIndex, chordTypeIndex, toneIndex }. Tapping an empty tile fills it
-// (via onSelect, the caller decides with what); tapping a filled tile
-// selects it for editing; tapping the selected tile again deselects it.
+// { rootIndex, chordTypeIndex, toneIndex, inversion }. Tapping an empty
+// tile fills it (via onSelect, the caller decides with what); tapping a
+// filled tile selects it for editing; tapping the selected tile again
+// deselects it.
 export class Sequencer {
   constructor({ container, onSelect, onChange }) {
     this.container = container;
@@ -71,6 +72,8 @@ export class Sequencer {
       const hue = Math.round((step.rootIndex / 12) * 360);
       const chordName = `${NOTE_NAMES[step.rootIndex]} ${CHORD_TYPES[step.chordTypeIndex].name}`;
       const toneName = TONES[step.toneIndex].short;
+      const inversion = step.inversion || 0;
+      const toneLabel = inversion ? `${toneName} · inv ${inversion}` : toneName;
       tile.classList.add('is-filled');
       tile.style.setProperty('--tile-hue', String(hue));
       tile.innerHTML = '';
@@ -79,9 +82,9 @@ export class Sequencer {
       chordSpan.textContent = chordName;
       const toneSpan = document.createElement('span');
       toneSpan.className = 'seq-tile-tone';
-      toneSpan.textContent = toneName;
+      toneSpan.textContent = toneLabel;
       tile.append(chordSpan, toneSpan);
-      tile.setAttribute('aria-label', `Step ${i + 1}, ${chordName}, ${toneName}`);
+      tile.setAttribute('aria-label', `Step ${i + 1}, ${chordName}, ${toneLabel}`);
     } else {
       tile.classList.remove('is-filled');
       tile.style.removeProperty('--tile-hue');

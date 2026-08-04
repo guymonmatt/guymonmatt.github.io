@@ -34,6 +34,15 @@ export const TWINKLE_TONES = [
   { name: 'Crystal', waveform: 'sine', partialRatio: 6 },
 ];
 
+// Inversion wheel: a fixed 0-6 range regardless of chord size. For a chord
+// with N tones, values cycle through its N inversions (0 = root position)
+// and then keep going — each full cycle past N pushes the whole chord up
+// another octave, so the same control doubles as a quick octave-shift once
+// you run out of new inversions to reach (e.g. a triad's value 3 is root
+// position again, just an octave up; value 6 is root position two octaves
+// up).
+export const MAX_INVERSION = 6;
+
 export const ARP_PATTERNS = ['Up', 'Down', 'Up-Down', 'Random'];
 
 export const ARP_RATES = [
@@ -52,9 +61,22 @@ export function noteFrequency(pitchClass, octave) {
 
 // Voices a chord as an array of frequencies, spreading intervals wider than
 // an octave (e.g. Add9's 14) up into higher octaves automatically.
-export function buildChordFrequencies(rootPitchClass, intervals, baseOctave = 3) {
-  return intervals.map((interval) => {
-    const semitones = rootPitchClass + interval;
+//
+// `inversion` rotates which tone lands at the bottom of the voicing: the
+// bottom `inversion % intervals.length` tones move up an octave to the top
+// (standard chord inversion), and every full trip through that cycle
+// (`Math.floor(inversion / intervals.length)`) shifts the entire chord up
+// one more octave on top of that.
+export function buildChordFrequencies(rootPitchClass, intervals, baseOctave = 3, inversion = 0) {
+  const n = intervals.length;
+  const cyclePosition = ((inversion % n) + n) % n;
+  const octaveShift = Math.floor(inversion / n);
+  const rotated = intervals
+    .slice(cyclePosition)
+    .concat(intervals.slice(0, cyclePosition).map((iv) => iv + 12));
+
+  return rotated.map((interval) => {
+    const semitones = rootPitchClass + interval + octaveShift * 12;
     const octave = baseOctave + Math.floor(semitones / 12);
     const pitchClass = ((semitones % 12) + 12) % 12;
     return noteFrequency(pitchClass, octave);
