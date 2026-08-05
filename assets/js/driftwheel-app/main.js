@@ -28,6 +28,8 @@ const els = {
   reverb: document.getElementById('driftwheel-reverb'),
   chorusToggle: document.getElementById('driftwheel-chorus-toggle'),
   subDroneToggle: document.getElementById('driftwheel-subdrone-toggle'),
+  arpChance: document.getElementById('driftwheel-arp-chance'),
+  arpLengthVariation: document.getElementById('driftwheel-arp-length-variation'),
 };
 
 let rootIndex = 0; // C
@@ -124,7 +126,24 @@ const arpRateWheel = new Wheel({
   onChange: (i) => engine.setArpRate(ARP_RATES[i].div),
 });
 
+// Independent of the pad's own Tone wheel, same as the twinkle layer's tone.
+const arpToneWheel = new Wheel({
+  container: document.getElementById('driftwheel-wheel-arp-tone'),
+  options: TONES.map((t) => t.name),
+  index: 0,
+  label: 'Arp tone',
+  onChange: (i) => engine.setArpTone(i),
+});
+
 engine.setArpRate(ARP_RATES[2].div);
+
+els.arpChance.addEventListener('input', () => {
+  engine.setArpChance(Number(els.arpChance.value));
+});
+
+els.arpLengthVariation.addEventListener('input', () => {
+  engine.setArpLengthVariation(Number(els.arpLengthVariation.value));
+});
 
 const sequencer = new Sequencer({
   container: els.seqGrid,
@@ -289,6 +308,9 @@ async function start() {
     engine.setTempo(Number(els.tempo.value));
     engine.setArpRate(ARP_RATES[arpRateWheel.index].div);
     engine.setArpPattern(ARP_PATTERNS[arpPatternWheel.index]);
+    engine.setArpTone(arpToneWheel.index);
+    engine.setArpChance(Number(els.arpChance.value));
+    engine.setArpLengthVariation(Number(els.arpLengthVariation.value));
     engine.setTwinkleOctaveRange(twinklePad.x);
     engine.setTwinkleDensity(twinklePad.y);
     engine.setTwinkleVolume(Number(els.twinkleVolume.value) / 100);
