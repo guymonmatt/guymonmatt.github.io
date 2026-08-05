@@ -255,6 +255,9 @@ export class AudioEngine {
       nextNoteTime: 0,
       stepIndex: 0,
       direction: 1,
+      toneIndex: 0, // independent of the pad's own Tone wheel
+      chance: 100, // 0-100: probability a scheduled note actually plays
+      lengthVariation: 0, // 0-100: probability a note's length gets randomized
     };
     this.volume = 0.6;
 
@@ -609,6 +612,23 @@ export class AudioEngine {
     this.arp.div = div;
   }
 
+  setArpTone(toneIndex) {
+    this.arp.toneIndex = toneIndex;
+  }
+
+  // v: 0-100. Probability each scheduled note actually plays; the rest are
+  // silently skipped (the pattern position still advances underneath, so
+  // the sequence keeps its shape, just with gaps).
+  setArpChance(v) {
+    this.arp.chance = v;
+  }
+
+  // v: 0-100. Probability a given note's length gets randomized instead of
+  // using the fixed duration derived from tempo/rate.
+  setArpLengthVariation(v) {
+    this.arp.lengthVariation = v;
+  }
+
   setTempo(bpm) {
     this.arp.tempo = bpm;
     // Keep the echo in the same rhythmic pocket as the arp/sequencer: a
@@ -659,11 +679,22 @@ export class AudioEngine {
     const frequencies = this.currentFrequencies;
     if (!frequencies.length) return;
     const noteDuration = (60 / this.arp.tempo) * (4 / this.arp.div);
+    const arpToneType = TONES[this.arp.toneIndex].type;
 
     while (this.arp.nextNoteTime < this.ctx.currentTime + lookahead) {
+      // Advance the pattern position every step, even if this note ends up
+      // skipped, so the underlying sequence keeps its shape.
       const idx = this._nextArpIndex(frequencies.length);
-      const freq = frequencies[idx] * 2; // an octave up so the pluck cuts through the pad
-      pluckVoice(this.ctx, this.voiceBus, freq, this.currentToneType, this.noiseBuffer, noteDuration, this.arp.nextNoteTime);
+
+      if (Math.random() * 100 < this.arp.chance) {
+        const freq = frequencies[idx] * 2; // an octave up so the pluck cuts through the pad
+        let duration = noteDuration;
+        if (Math.random() * 100 < this.arp.lengthVariation) {
+          duration = noteDuration * (0.3 + Math.random() * 1.4);
+        }
+        pluckVoice(this.ctx, this.voiceBus, freq, arpToneType, this.noiseBuffer, duration, this.arp.nextNoteTime);
+      }
+
       this.arp.nextNoteTime += noteDuration;
     }
   }
