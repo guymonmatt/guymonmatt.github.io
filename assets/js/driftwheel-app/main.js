@@ -300,6 +300,13 @@ els.playToggle.addEventListener('click', () => {
   }
 });
 
+// Browsers can suspend the AudioContext while the tab is hidden (most
+// aggressively on mobile); resume it as soon as the tab is visible again so
+// playback picks back up without the user having to hit Play again.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && playing) engine.resume();
+});
+
 async function start() {
   try {
     engine.init();
