@@ -286,8 +286,10 @@ function beginPlayback() {
   if (els.subDroneToggle.checked) engine.setSubDroneEnabled(true);
 }
 
-els.playToggle.addEventListener('click', () => {
-  playing = !playing;
+// Shared by the Play button and the Media Session lock-screen controls below,
+// so either one can drive playback and both stay in sync.
+function setPlaying(next) {
+  playing = next;
   if (playing) {
     beginPlayback();
     els.playToggle.textContent = 'Pause';
@@ -298,7 +300,29 @@ els.playToggle.addEventListener('click', () => {
     els.playToggle.textContent = 'Play';
     els.playToggle.classList.remove('is-playing');
   }
-});
+  updateMediaSessionPlaybackState();
+}
+
+els.playToggle.addEventListener('click', () => setPlaying(!playing));
+
+// Registers Driftwheel as an active media session so mobile browsers keep the
+// AudioContext (and its background wind/twinkle/arp schedulers) running while
+// the browser app is backgrounded rather than tabbed away or closed — the
+// same mechanism music players use for lock-screen playback controls.
+function setupMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: 'Driftwheel',
+    artist: 'Ambient synth pad',
+  });
+  navigator.mediaSession.setActionHandler('play', () => { if (!playing) setPlaying(true); });
+  navigator.mediaSession.setActionHandler('pause', () => { if (playing) setPlaying(false); });
+}
+
+function updateMediaSessionPlaybackState() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+}
 
 // Browsers can suspend the AudioContext while the tab is hidden (most
 // aggressively on mobile); resume it as soon as the tab is visible again so
@@ -334,10 +358,8 @@ async function start() {
   els.app.classList.add('is-active');
   updateChordLabel();
 
-  playing = true;
-  beginPlayback();
-  els.playToggle.textContent = 'Pause';
-  els.playToggle.classList.add('is-playing');
+  setupMediaSession();
+  setPlaying(true);
 
   startVisualizer();
 }
